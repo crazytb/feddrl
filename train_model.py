@@ -16,9 +16,9 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 
+import drl_framework.custom_env as drl_env
 
-
-env = CustomEnv()
+env = drl_env.CustomEnv()
 
 is_ipython = 'inline' in matplotlib.get_backend()
 if is_ipython:
