@@ -16,9 +16,10 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 
-import drl_framework.custom_env as drl_env
+from drl_framework.custom_env import *
+from drl_framework.dqn import *
 
-env = drl_env.CustomEnv()
+env = CustomEnv()
 
 is_ipython = 'inline' in matplotlib.get_backend()
 if is_ipython:
@@ -29,47 +30,13 @@ plt.ion()
 if torch.cuda.is_available():
     device = torch.device("cuda")
 elif torch.backends.mps.is_available():
-    device = torch.device("mps")
-else:
-    device = torch.device("cpu")
-print(device)
+    device = torch.device("mps")  
+print("device: ", device)
 
 Transition = namedtuple('Transition',
                         ('state', 'action', 'next_state', 'reward'))
 
-class ReplayMemory(object):
-    def __init__(self, capacity):
-        self.memory = deque([], maxlen=capacity)
-    def push(self, *args):
-        """Save a transition"""
-        self.memory.append(Transition(*args))
-    def sample(self, batch_size):
-        return random.sample(self.memory, batch_size)
-    def __len__(self):
-        return len(self.memory)
-    
-class DQN(nn.Module):
-    def __init__(self, n_observations, n_actions):
-        super(DQN, self).__init__()
-        self.layer1 = nn.Linear(n_observations, round(n_observations/2))
-        self.layer2 = nn.Linear(round(n_observations/2), round(n_observations/2))
-        self.layer3 = nn.Linear(round(n_observations/2), n_actions)
-    # Called with either one element to determine next action, or a batch
-    # during optimization. Returns tensor([[left0exp,right0exp]...]).
-    def forward(self, x):
-        x = F.relu(self.layer1(x))
-        x = F.relu(self.layer2(x))
-        return self.layer3(x)
-    
-def flatten_dict_values(dictionary):
-    flattened = np.array([])
-    for v in list(dictionary.values()):
-        if isinstance(v, np.ndarray):
-            flattened = np.concatenate([flattened, v])
-        else:
-            flattened = np.concatenate([flattened, np.array([v])])
-    return flattened
-    
+ 
 # BATCH_SIZE is the number of transitions sampled from the replay buffer
 # GAMMA is the discount factor as mentioned in the previous section
 # EPS_START is the starting value of epsilon
@@ -89,7 +56,7 @@ LR = 1e-4
 n_actions = env.action_space.n
 # Get the number of state observations
 state, info = env.reset()
-state = flatten_dict_values(state)
+state = env.flatten_dict_values(state)
 n_observations = len(state)
 
 policy_net = DQN(n_observations, n_actions).to(device)
@@ -105,6 +72,7 @@ memory = ReplayMemory(1000)
 
 steps_done = 0
 
+episode_durations = []
 
 def select_action(state):
     global steps_done
@@ -120,10 +88,6 @@ def select_action(state):
             return policy_net(state).max(1)[1].view(1, 1)
     else:
         return torch.tensor([[env.action_space.sample()]], device=device, dtype=torch.long)
-
-
-episode_durations = []
-
 
 def plot_durations(show_result=False):
     plt.figure(1)
@@ -197,7 +161,7 @@ def optimize_model():
     optimizer.step()
 
 if device == torch.device("cuda") or device == torch.device("mps"):
-    num_episodes = 2000
+    num_episodes = 200
 else:
     num_episodes = 50
 
@@ -205,7 +169,7 @@ else:
 for i_episode in range(num_episodes):
     # Initialize the environment and get it's state
     state, info = env.reset()
-    state = torch.tensor(flatten_dict_values(state), dtype=torch.float32, device=device).unsqueeze(0)
+    state = torch.tensor(env.flatten_dict_values(state), dtype=torch.float32, device=device).unsqueeze(0)
     # state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
     for epoch in range(100):
         action = select_action(state)
@@ -216,7 +180,7 @@ for i_episode in range(num_episodes):
         if terminated:
             next_state = None
         else:
-            next_state = torch.tensor(flatten_dict_values(observation), dtype=torch.float32, device=device).unsqueeze(0)
+            next_state = torch.tensor(env.flatten_dict_values(observation), dtype=torch.float32, device=device).unsqueeze(0)
 
         # Store the transition in memory
         memory.push(state, action, next_state, reward)

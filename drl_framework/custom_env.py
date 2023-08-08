@@ -95,6 +95,15 @@ class CustomEnv(gym.Env):
                 arr[i] = value
                 break
         return arr
+    
+    def flatten_dict_values(self, dict):
+        flattened = np.array([])
+        for v in list(dict.values()):
+            if isinstance(v, np.ndarray):
+                flattened = np.concatenate([flattened, v])
+            else:
+                flattened = np.concatenate([flattened, np.array([v])])
+        return flattened
 
     def reset(self, seed=None, options=None):
         """
