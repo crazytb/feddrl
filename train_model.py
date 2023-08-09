@@ -18,8 +18,13 @@ import torch.nn.functional as F
 
 from drl_framework.custom_env import *
 from drl_framework.dqn import *
+from drl_framework.params import *
 
-env = CustomEnv()
+env = CustomEnv(max_comp_units=MAX_COMP_UNITS,
+                max_terminals=MAX_TERMINALS, 
+                max_epoch_size=MAX_EPOCH_SIZE,
+                max_queue_size=MAX_QUEUE_SIZE,
+                reward_weights=REWARD_WEIGHTS)
 
 is_ipython = 'inline' in matplotlib.get_backend()
 if is_ipython:
@@ -37,21 +42,6 @@ Transition = namedtuple('Transition',
                         ('state', 'action', 'next_state', 'reward'))
 
  
-# BATCH_SIZE is the number of transitions sampled from the replay buffer
-# GAMMA is the discount factor as mentioned in the previous section
-# EPS_START is the starting value of epsilon
-# EPS_END is the final value of epsilon
-# EPS_DECAY controls the rate of exponential decay of epsilon, higher means a slower decay
-# TAU is the update rate of the target network
-# LR is the learning rate of the ``AdamW`` optimizer
-BATCH_SIZE = 128
-GAMMA = 0.99
-EPS_START = 0.9
-EPS_END = 0.05
-EPS_DECAY = 1000
-TAU = 0.005
-LR = 1e-4
-
 # Get number of actions from gym action space
 n_actions = env.action_space.n
 # Get the number of state observations
@@ -161,7 +151,7 @@ def optimize_model():
     optimizer.step()
 
 if device == torch.device("cuda") or device == torch.device("mps"):
-    num_episodes = 200
+    num_episodes = 500
 else:
     num_episodes = 50
 
@@ -171,7 +161,7 @@ for i_episode in range(num_episodes):
     state, info = env.reset()
     state = torch.tensor(env.flatten_dict_values(state), dtype=torch.float32, device=device).unsqueeze(0)
     # state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
-    for epoch in range(100):
+    for epoch in range(MAX_EPOCH_SIZE):
         action = select_action(state)
         observation, reward, terminated, truncated, _ = env.step(action.item())
         reward = torch.tensor([reward], device=device)
@@ -204,6 +194,7 @@ for i_episode in range(num_episodes):
             plot_durations()
             break
 
+    
 print('Complete')
 plot_durations(show_result=True)
 plt.ioff()

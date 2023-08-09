@@ -5,26 +5,23 @@ from numpy.random import default_rng
 import math
 import random
 
+
 class CustomEnv(gym.Env):
-    def __init__(self, 
-                 max_comp_units=100, 
-                 max_terminals=10, 
-                 max_epoch_size=100,
-                 max_queue_size=100):
+    def __init__(self, max_comp_units, max_terminals, max_epoch_size, max_queue_size, reward_weights):
         super(CustomEnv, self).__init__()
-        self.max_comp_units = max_comp_units
+        # self.max_comp_units = max_comp_units
         self.max_terminals = max_terminals
         self.max_epoch_size = max_epoch_size
         self.max_queue_size = max_queue_size
 
-        self.reward_weight = 0.1
+        self.reward_weight = reward_weights
         self.max_available_computation_units = max_comp_units
         self.max_number_of_associated_terminals = max_terminals
         self.max_channel_quality = 2
         self.max_remain_epochs = max_epoch_size
-        # self.max_comp_units = np.array([max_comp_units] * max_queue_size)
-        self.max_comp_units = np.array([10] * max_queue_size)
-        self.max_proc_times = np.array([max_epoch_size] * max_queue_size)
+        self.max_comp_units = np.array([max_comp_units] * max_queue_size)
+        # self.max_proc_times = np.array([max_epoch_size] * max_queue_size)
+        self.max_proc_times = np.array([int(np.ceil(max_epoch_size/2))] * max_queue_size)
 
         # 0: process, 1: offload
         self.action_space = spaces.Discrete(2)
@@ -147,12 +144,12 @@ class CustomEnv(gym.Env):
                 self.queue_proc_times = np.concatenate([self.queue_proc_times[1:], np.array([0])])
             else:
                 pass
-                self.reward += -100 # penalty
+                self.reward += -1 * self.max_available_computation_units # penalty
 
             self.channel_quality = self.change_channel_quality()
             self.remain_epochs = self.remain_epochs - 1
         else:
-            self.reward += self.reward_weight if self.channel_quality == 1 else 0
+            self.reward += self.reward_weight * self.queue_comp_units[0] if self.channel_quality == 1 else 0
             self.channel_quality = self.change_channel_quality()
             self.remain_epochs = self.remain_epochs - 1
             # shift left-wise queue information with 1 and pad 0
@@ -163,7 +160,7 @@ class CustomEnv(gym.Env):
         self.mec_proc_times = np.clip(self.mec_proc_times - 1, 0, self.max_proc_times)
         recovered_comp_units = self.mec_comp_units[self.mec_proc_times == 0].sum()
         if recovered_comp_units > 0:
-            self.reward += 1
+            self.reward += self.mec_comp_units[self.mec_proc_times == 0].sum()
         self.available_computation_units = self.available_computation_units + recovered_comp_units
         self.mec_proc_times = np.concatenate([self.mec_proc_times[self.mec_proc_times > 0], np.zeros(self.max_queue_size - len(self.mec_proc_times[self.mec_proc_times > 0]), dtype=int)])
         self.mec_comp_units[self.mec_proc_times == 0] = 0
