@@ -109,14 +109,14 @@ class CustomEnv(gym.Env):
         super().reset(seed=seed)
 
         self.available_computation_units = self.max_available_computation_units
-        self.number_of_associated_terminals = self.rng.integers(1, self.max_number_of_associated_terminals + 1)
+        self.number_of_associated_terminals = self.rng.integers(1, self.max_number_of_associated_terminals + 1, size=1)
         self.channel_quality = self.rng.integers(0, self.max_channel_quality)
         self.remain_epochs = self.max_remain_epochs
         self.remain_processing = 0
         self.mec_comp_units = np.zeros(self.max_queue_size, dtype=int)
         self.mec_proc_times = np.zeros(self.max_queue_size, dtype=int)
-        self.queue_comp_units = self.rng.integers(1, self.max_comp_units + 1)
-        self.queue_proc_times = self.rng.integers(1, self.max_proc_times + 1)
+        self.queue_comp_units = self.rng.integers(1, self.max_comp_units/2 + 1, size=self.max_queue_size)
+        self.queue_proc_times = self.rng.integers(1, self.max_proc_times + 1, size=self.max_queue_size)
 
         self.reward = 0
 
@@ -144,12 +144,12 @@ class CustomEnv(gym.Env):
                 self.queue_proc_times = np.concatenate([self.queue_proc_times[1:], np.array([0])])
             else:
                 pass
-                self.reward += -1 * self.max_available_computation_units # penalty
+                self.reward = -1 * self.queue_comp_units[0] # penalty
 
             self.channel_quality = self.change_channel_quality()
             self.remain_epochs = self.remain_epochs - 1
         else:
-            self.reward += self.reward_weight * self.queue_comp_units[0] if self.channel_quality == 1 else 0
+            self.reward = self.reward_weight * self.queue_comp_units[0] if self.channel_quality == 1 else 0
             self.channel_quality = self.change_channel_quality()
             self.remain_epochs = self.remain_epochs - 1
             # shift left-wise queue information with 1 and pad 0
@@ -157,14 +157,16 @@ class CustomEnv(gym.Env):
             self.queue_proc_times = np.concatenate([self.queue_proc_times[1:], np.array([0])])
 
         # processing phase
+        zeroed_index = (self.mec_proc_times == 1)
         self.mec_proc_times = np.clip(self.mec_proc_times - 1, 0, self.max_proc_times)
-        recovered_comp_units = self.mec_comp_units[self.mec_proc_times == 0].sum()
-        if recovered_comp_units > 0:
-            self.reward += self.mec_comp_units[self.mec_proc_times == 0].sum()
-        self.available_computation_units = self.available_computation_units + recovered_comp_units
-        self.mec_proc_times = np.concatenate([self.mec_proc_times[self.mec_proc_times > 0], np.zeros(self.max_queue_size - len(self.mec_proc_times[self.mec_proc_times > 0]), dtype=int)])
-        self.mec_comp_units[self.mec_proc_times == 0] = 0
-        self.mex_comp_units = np.concatenate([self.mec_comp_units[self.mec_proc_times > 0], np.zeros(self.max_queue_size - len(self.mec_proc_times[self.mec_proc_times > 0]), dtype=int)])
+        if zeroed_index.any():
+            recovered_comp_units = self.mec_comp_units[zeroed_index].sum()
+            self.available_computation_units = self.available_computation_units + recovered_comp_units
+            self.mec_comp_units[zeroed_index] = 0
+            self.reward += self.mec_comp_units[zeroed_index].sum()
+            self.mec_proc_times = np.concatenate([self.mec_proc_times[self.mec_proc_times > 0], np.zeros(self.max_queue_size - len(self.mec_proc_times[self.mec_proc_times > 0]), dtype=int)])
+            self.mec_comp_units = np.concatenate([self.mec_comp_units[self.mec_proc_times > 0], np.zeros(self.max_queue_size - len(self.mec_proc_times[self.mec_proc_times > 0]), dtype=int)])
+        
 
         next_obs = self.get_obs()
 
