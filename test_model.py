@@ -42,6 +42,8 @@ def test_model(model, env, iterations=200, simmode="drl"):
             # selected_action = 1 only if the channel quality is good
             elif simmode == "offload_only":
                 selected_action = torch.tensor([1], dtype=torch.int64, device=device)
+            elif simmode == "local_only":
+                selected_action = torch.tensor([0], dtype=torch.int64, device=device)
             # print(f"selected_action: {selected_action}")
             next_state, reward_inst, terminated, truncated, _ = env.step(selected_action.item())
             # print(f"next_state: {next_state}")
@@ -66,16 +68,25 @@ policy_net = torch.load("policy_model.pt")
 policy_net.eval()
 print("policy_net: ", policy_net)
 
-df, rewards = test_model(policy_net, test_env, iterations=200, simmode="offload_only")
-filename = "test_log.csv"
-df.to_csv(filename)
+for i, simmode in enumerate(["drl", "offload_only", "local_only"]):
+# for i, simmode in enumerate(["local_only"]):
+    df, rewards = test_model(policy_net, test_env, iterations=200, simmode=simmode)
+    filename = simmode + "_test_log.csv"
+    df.to_csv(filename)
 
-# Plot rewards
-plt.figure(2)
-plt.clf()
-rewards_t = torch.tensor(rewards, dtype=torch.float)
-plt.title('Test Rewards')
-plt.xlabel('Epoch')
-plt.ylabel('Reward')
-plt.plot(rewards_t.numpy())
+    # Plot rewards
+    plt.figure()
+    plt.clf()
+    rewards_t = torch.tensor(rewards, dtype=torch.float)
+    plt.xlabel('Episode #')
+    plt.ylabel('Return')
+    plt.plot(rewards_t.numpy())
+
+    means = rewards_t.unfold(0, 20, 1).mean(1).view(-1)
+    means = torch.cat((torch.zeros(19), means))
+    plt.plot(means.numpy())
+    # Save plot into files
+    filename = simmode + "_test_rewards.png"
+    plt.savefig(filename)
+
 plt.show()

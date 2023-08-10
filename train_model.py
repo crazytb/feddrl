@@ -57,7 +57,7 @@ target_net = DQN(n_observations, n_actions).to(device)
 target_net.load_state_dict(policy_net.state_dict())
 
 optimizer = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True)
-memory = ReplayMemory(5000)
+memory = ReplayMemory(BATCH_SIZE)
 
 
 steps_done = 0
@@ -151,7 +151,7 @@ def optimize_model():
     optimizer.step()
 
 if device == torch.device("cuda") or device == torch.device("mps"):
-    num_episodes = 1000
+    num_episodes = 2000
 else:
     num_episodes = 50
 
