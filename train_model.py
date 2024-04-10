@@ -164,7 +164,7 @@ for i_episode in range(num_episodes):
     for epoch in range(MAX_EPOCH_SIZE):
         action = select_action(state)
         observation, reward, terminated, truncated, _ = env.step(action.item())
-        reward = torch.tensor([reward], device=device)
+        reward = torch.tensor([reward], device=device, dtype=torch.float32)
         done = terminated or truncated
 
         if terminated:
@@ -199,6 +199,3 @@ print('Complete')
 plot_durations(show_result=True)
 plt.ioff()
 plt.show()
-
-# Save the policy network
-torch.save(policy_net, 'policy_model.pt')

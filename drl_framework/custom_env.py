@@ -5,6 +5,8 @@ from numpy.random import default_rng
 import math
 import random
 
+# https://gymnasium.farama.org/tutorials/gymnasium_basics/environment_creation/
+# https://www.youtube.com/@cartoonsondemand
 
 class CustomEnv(gym.Env):
     def __init__(self, max_comp_units, max_terminals, max_epoch_size, max_queue_size, reward_weights):

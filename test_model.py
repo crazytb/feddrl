@@ -64,7 +64,7 @@ test_env = CustomEnv(max_comp_units=MAX_COMP_UNITS,
                     max_epoch_size=MAX_EPOCH_SIZE,
                     max_queue_size=MAX_QUEUE_SIZE,
                     reward_weights=REWARD_WEIGHTS)
-policy_net = torch.load("policy_model.pt")
+policy_net = torch.load("policy_model.pt", map_location=torch.device('mps'))
 policy_net.eval()
 print("policy_net: ", policy_net)
 
