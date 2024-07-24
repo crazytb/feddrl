@@ -11,7 +11,7 @@ import random
 class CustomEnv(gym.Env):
     def __init__(self, max_comp_units, max_terminals, max_epoch_size, max_queue_size, reward_weights):
         super(CustomEnv, self).__init__()
-        # self.max_comp_units = max_comp_units
+        self.max_comp_units = max_comp_units
         self.max_terminals = max_terminals
         self.max_epoch_size = max_epoch_size
         self.max_queue_size = max_queue_size
@@ -151,7 +151,7 @@ class CustomEnv(gym.Env):
             self.channel_quality = self.change_channel_quality()
             self.remain_epochs = self.remain_epochs - 1
         else:
-            self.reward = self.reward_weight * self.queue_comp_units[0] if self.channel_quality == 1 else 0
+            self.reward = (self.reward_weight * self.queue_comp_units[0]/100) if self.channel_quality == 1 else 0
             self.channel_quality = self.change_channel_quality()
             self.remain_epochs = self.remain_epochs - 1
             # shift left-wise queue information with 1 and pad 0
