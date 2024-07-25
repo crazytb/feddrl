@@ -21,15 +21,19 @@ from drl_framework.custom_env import *
 from drl_framework.dqn import *
 from drl_framework.params import *
 
+import train_model_dqn as model_dqn
+import train_model_drqn as model_drqn
+
 # if GPU is to be used
 if torch.cuda.is_available():
     device = torch.device("cuda")
 elif torch.backends.mps.is_available():
     device = torch.device("mps")  
-print("device: ", device)
+else:
+    device = torch.device("cpu")
     
 # Make test model
-def test_model(model, env, iterations=200, simmode="drl"):
+def test_model(env, model=None, iterations=200, simmode="dqn"):
     df = pd.DataFrame()
     rewards = []
     for iter in range(iterations):
@@ -37,15 +41,24 @@ def test_model(model, env, iterations=200, simmode="drl"):
         reward = 0
         for i in range(MAX_EPOCH_SIZE):
             next_state = env.flatten_dict_values(next_state)
-            if simmode == "drl":
-                selected_action = model.forward(torch.tensor(next_state, dtype=torch.float32, device=device)).max(0)[1].view(1, 1)
+            next_state = np.delete(next_state, 2)
+            if simmode == "dqn":
+                q_values = model.forward(torch.tensor(next_state, dtype=torch.float32, device=device))
+                selected_action = q_values.max(0)[1].view(1, 1)
+            elif simmode == "drqn":
+                h = torch.zeros(1, 64, device=device)
+                c = torch.zeros(1, 64, device=device)
+                q_values, h, c = model.forward(torch.tensor(next_state, dtype=torch.float32, device=device).view(1, -1), h, c)
+                selected_action = q_values.squeeze().max(0)[1].view(1, 1)
             # selected_action = 1 only if the channel quality is good
             elif simmode == "offload_only":
                 selected_action = torch.tensor([1], dtype=torch.int64, device=device)
             elif simmode == "local_only":
                 selected_action = torch.tensor([0], dtype=torch.int64, device=device)
+            else:
+                raise ValueError("Invalid simmode")
             # print(f"selected_action: {selected_action}")
-            next_state, reward_inst, terminated, truncated, _ = env.step(selected_action.item())
+            next_state, reward_inst, _, _, _ = env.step(selected_action.item())
             # print(f"next_state: {next_state}")
             reward += reward_inst
             df_data = pd.DataFrame(data=[next_state.values()], columns=next_state.keys(), index=[iter])
@@ -64,13 +77,24 @@ test_env = CustomEnv(max_comp_units=MAX_COMP_UNITS,
                     max_epoch_size=MAX_EPOCH_SIZE,
                     max_queue_size=MAX_QUEUE_SIZE,
                     reward_weights=REWARD_WEIGHTS)
-policy_net = torch.load("policy_model.pt", map_location=torch.device('mps'))
-policy_net.eval()
-print("policy_net: ", policy_net)
+n_observation = len(test_env.flatten_dict_values(test_env.reset()[0]))
+n_actions = test_env.action_space.n
+dqn = model_dqn.Q_net(state_space=n_observation-1, action_space=n_actions).to(device)
+drqn = model_drqn.Q_net(state_space=n_observation-1, action_space=n_actions).to(device)
+# Load trained models
+dqn.load_state_dict(torch.load("DQN_POMDP_SEED_1.pth", map_location=device))
+drqn.load_state_dict(torch.load("DRQN_POMDP_Random_SEED_1.pth", map_location=device))
+dqn.eval()
+drqn.eval()
 
-for i, simmode in enumerate(["drl", "offload_only", "local_only"]):
-# for i, simmode in enumerate(["local_only"]):
-    df, rewards = test_model(policy_net, test_env, iterations=200, simmode=simmode)
+for i, simmode in enumerate(["dqn", "drqn", "offload_only", "local_only"]):
+    if simmode == "dqn":
+        model = dqn
+    elif simmode == "drqn":
+        model = drqn
+    else:
+        model = None
+    df, rewards = test_model(test_env, model=model, iterations=200, simmode=simmode)
     filename = simmode + "_test_log.csv"
     df.to_csv(filename)
 
