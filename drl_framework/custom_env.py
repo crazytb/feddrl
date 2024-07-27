@@ -134,7 +134,9 @@ class CustomEnv(gym.Env):
         # forwarding phase
         # 0: local process, 1: offload
         if action == 0:
-            # if available computation units are enough to process the first queue task and mec_comp_unit has empty slot and queue_comp_units has nonzero value.
+            # if available computation units are enough to process the first queue task and 
+            # mec_comp_unit has empty slot and 
+            # queue_comp_units has nonzero value.
             case_action = ((self.available_computation_units >= self.queue_comp_units[0]) and 
                            (self.mec_comp_units[self.mec_comp_units == 0].size > 0) and
                            (self.queue_comp_units[0] > 0))
@@ -142,21 +144,17 @@ class CustomEnv(gym.Env):
                 self.available_computation_units -= self.queue_comp_units[0]
                 self.mec_comp_units = self.fill_first_zero(self.mec_comp_units, self.queue_comp_units[0])
                 self.mec_proc_times = self.fill_first_zero(self.mec_proc_times, self.queue_proc_times[0])
-                self.queue_comp_units = np.concatenate([self.queue_comp_units[1:], np.array([0])])
-                self.queue_proc_times = np.concatenate([self.queue_proc_times[1:], np.array([0])])
             else:
                 pass
                 # self.reward = -1 * self.queue_comp_units[0] # penalty
-
-            self.channel_quality = self.change_channel_quality()
-            self.remain_epochs = self.remain_epochs - 1
         else:
             self.reward = (self.reward_weight * self.queue_comp_units[0]/100) if self.channel_quality == 1 else 0
-            self.channel_quality = self.change_channel_quality()
-            self.remain_epochs = self.remain_epochs - 1
-            # shift left-wise queue information with 1 and pad 0
-            self.queue_comp_units = np.concatenate([self.queue_comp_units[1:], np.array([0])])
-            self.queue_proc_times = np.concatenate([self.queue_proc_times[1:], np.array([0])])
+            
+        self.channel_quality = self.change_channel_quality()
+        self.remain_epochs = self.remain_epochs - 1
+        # shift left-wise queue information with 1 and pad 0
+        self.queue_comp_units = np.concatenate([self.queue_comp_units[1:], np.array([0])])
+        self.queue_proc_times = np.concatenate([self.queue_proc_times[1:], np.array([0])])
 
         # processing phase
         zeroed_index = (self.mec_proc_times == 1)
