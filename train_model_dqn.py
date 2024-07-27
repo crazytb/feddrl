@@ -177,17 +177,19 @@ if __name__ == "__main__":
 
     state, info = env.reset()
     n_observation = len(env.flatten_dict_values(state))
+    # Hidden state settings
+    n_states_to_be_hidden = 2*MAX_QUEUE_SIZE
 
     # Create Q functions
-    Q = Q_net(state_space=n_observation-1, 
+    Q = Q_net(state_space=n_observation-n_states_to_be_hidden, 
               action_space=env.action_space.n).to(device)
-    Q_target = Q_net(state_space=n_observation-1, 
+    Q_target = Q_net(state_space=n_observation-n_states_to_be_hidden, 
                      action_space=env.action_space.n).to(device)
 
     Q_target.load_state_dict(Q.state_dict())
 
     # Create Replay buffer
-    replay_buffer = ReplayBuffer(n_observation-1,
+    replay_buffer = ReplayBuffer(n_observation-n_states_to_be_hidden,
                                  size=buffer_len,
                                  batch_size=batch_size)
 
@@ -201,9 +203,10 @@ if __name__ == "__main__":
     # Train
     for i in range(episodes):
         s, _ = env.reset()
+        s = {k: v for k, v in list(s.items())[:-2]}
         s = env.flatten_dict_values(s)
         # obs = s[::2] # Use only Position of Cart and Pole
-        s = np.delete(s, 2)
+        # s = np.delete(s, [])
         done = False
         
         for t in range(max_step):
@@ -213,7 +216,8 @@ if __name__ == "__main__":
 
             # Do action
             s_prime, r, done, _, _ = env.step(a)
-            s_prime = np.delete(env.flatten_dict_values(s_prime), 2)
+            s_prime = {k: v for k, v in list(s_prime.items())[:-2]}
+            s_prime = env.flatten_dict_values(s_prime)
 
             # make data
             done_mask = 0.0 if done else 1.0

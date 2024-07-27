@@ -12,6 +12,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from torch.nn.utils import clip_grad_norm_
 
 from torch.utils.tensorboard import SummaryWriter
 
@@ -160,7 +161,8 @@ def train(q_net=None, target_q_net=None, episode_memory=None,
           optimizer = None,
           batch_size=1,
           learning_rate=1e-3,
-          gamma=0.99):
+          gamma=0.99,
+          max_grad_norm=1.0):
 
     assert device is not None, "None Device input: device should be selected."
 
@@ -210,6 +212,8 @@ def train(q_net=None, target_q_net=None, episode_memory=None,
     # Update Network
     optimizer.zero_grad()
     loss.backward()
+    # Add gradient clipping here
+    clip_grad_norm_(q_net.parameters(), max_grad_norm)
     optimizer.step()
 
 def seed_torch(seed):
@@ -258,15 +262,15 @@ if __name__ == "__main__":
 
     # Set parameters
     batch_size = 1
-    learning_rate = 1e-3
+    learning_rate = 1e-4 #
     buffer_len = int(100000)
     min_epi_num = 20 # Start moment to train the Q network
     episodes = 2000
     print_per_iter = 20
-    target_update_period = 4
+    target_update_period = 10 #
     eps_start = 0.1
-    eps_end = 0.001
-    eps_decay = 0.995
+    eps_end = 0.01 #
+    eps_decay = 0.998 #
     tau = 1e-2
     max_step = 20
 
@@ -278,11 +282,13 @@ if __name__ == "__main__":
 
     state, info = env.reset()
     n_observation = len(env.flatten_dict_values(state))
+    # Hidden state settings
+    n_states_to_be_hidden = 2*MAX_QUEUE_SIZE
 
     # Create Q functions
-    Q = Q_net(state_space=n_observation-1, 
+    Q = Q_net(state_space=n_observation-n_states_to_be_hidden, 
               action_space=env.action_space.n).to(device)
-    Q_target = Q_net(state_space=n_observation-1, 
+    Q_target = Q_net(state_space=n_observation-n_states_to_be_hidden, 
                      action_space=env.action_space.n).to(device)
 
     Q_target.load_state_dict(Q.state_dict())
@@ -302,9 +308,10 @@ if __name__ == "__main__":
     # Train
     for i in range(episodes):
         s, _ = env.reset()
-        s = env.flatten_dict_values(s)
+        s = {k: v for k, v in list(s.items())[:-2]}
+        obs = env.flatten_dict_values(s)
         # obs = s[::2] # Use only Position of Cart and Pole
-        obs = np.delete(s, 2)
+        # obs = np.delete(s, 2)
         done = False
         
         episode_record = EpisodeBuffer()
@@ -319,7 +326,8 @@ if __name__ == "__main__":
 
             # Do action
             s_prime, r, done, _, _ = env.step(a)
-            obs_prime = np.delete(env.flatten_dict_values(s_prime), 2)
+            s_prime = {k: v for k, v in list(s_prime.items())[:-2]}
+            obs_prime = env.flatten_dict_values(s_prime)
 
             # make data
             done_mask = 0.0 if done else 1.0
@@ -335,7 +343,8 @@ if __name__ == "__main__":
                 train(Q, Q_target, episode_memory, device, 
                         optimizer=optimizer,
                         batch_size=batch_size,
-                        learning_rate=learning_rate)
+                        learning_rate=learning_rate,
+                        max_grad_norm=1.0)
 
                 if (t+1) % target_update_period == 0:
                     # Q_target.load_state_dict(Q.state_dict()) <- navie update

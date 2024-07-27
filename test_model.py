@@ -40,8 +40,9 @@ def test_model(env, model=None, iterations=200, simmode="dqn"):
         next_state, _ = env.reset()
         reward = 0
         for i in range(MAX_EPOCH_SIZE):
+            next_state = {k: v for k, v in list(next_state.items())[:-2]}
             next_state = env.flatten_dict_values(next_state)
-            next_state = np.delete(next_state, 2)
+            # next_state = np.delete(next_state, 2)
             if simmode == "dqn":
                 q_values = model.forward(torch.tensor(next_state, dtype=torch.float32, device=device))
                 selected_action = q_values.max(0)[1].view(1, 1)
@@ -79,8 +80,9 @@ test_env = CustomEnv(max_comp_units=MAX_COMP_UNITS,
                     reward_weights=REWARD_WEIGHTS)
 n_observation = len(test_env.flatten_dict_values(test_env.reset()[0]))
 n_actions = test_env.action_space.n
-dqn = model_dqn.Q_net(state_space=n_observation-1, action_space=n_actions).to(device)
-drqn = model_drqn.Q_net(state_space=n_observation-1, action_space=n_actions).to(device)
+n_states_to_be_hidden = 2*MAX_QUEUE_SIZE
+dqn = model_dqn.Q_net(state_space=n_observation-n_states_to_be_hidden, action_space=n_actions).to(device)
+drqn = model_drqn.Q_net(state_space=n_observation-n_states_to_be_hidden, action_space=n_actions).to(device)
 # Load trained models
 dqn.load_state_dict(torch.load("DQN_POMDP_SEED_1.pth", map_location=device))
 drqn.load_state_dict(torch.load("DRQN_POMDP_Random_SEED_1.pth", map_location=device))
