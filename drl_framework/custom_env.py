@@ -141,6 +141,8 @@ class CustomEnv(gym.Env):
                            (self.mec_comp_units[self.mec_comp_units == 0].size > 0) and
                            (self.queue_comp_units[0] > 0))
             self.available_computation_units -= self.queue_comp_units[0]
+            if self.available_computation_units < 0:
+                self.available_computation_units = 0
             self.mec_comp_units = self.fill_first_zero(self.mec_comp_units, self.queue_comp_units[0])
             self.mec_proc_times = self.fill_first_zero(self.mec_proc_times, self.queue_proc_times[0])
             if case_action:
