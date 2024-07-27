@@ -161,19 +161,19 @@ if __name__ == "__main__":
         os.makedirs(output_path)
     writer = SummaryWriter(output_path + "/" + model_name + "_" + f"{timestamp}")
 
-    # Set parameters
-    batch_size = 64
-    learning_rate = 1e-3
-    buffer_len = int(100000)
-    min_buffer_len = batch_size
-    episodes = 2000
-    print_per_iter = 20
-    target_update_period = 4
-    eps_start = 0.1
-    eps_end = 0.001
-    eps_decay = 0.995
-    tau = 1*1e-2
-    max_step = 20
+    # # Set parameters
+    # batch_size = 64
+    # learning_rate = 1e-3
+    # buffer_len = int(100000)
+    # min_buffer_len = batch_size
+    # episodes = 2000
+    # print_per_iter = 20
+    # target_update_period = 4
+    # eps_start = 0.1
+    # eps_end = 0.001
+    # eps_decay = 0.995
+    # tau = 1*1e-2
+    # max_step = 20
 
     state, info = env.reset()
     n_observation = len(env.flatten_dict_values(state))

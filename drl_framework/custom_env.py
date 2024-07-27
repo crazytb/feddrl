@@ -140,15 +140,15 @@ class CustomEnv(gym.Env):
             case_action = ((self.available_computation_units >= self.queue_comp_units[0]) and 
                            (self.mec_comp_units[self.mec_comp_units == 0].size > 0) and
                            (self.queue_comp_units[0] > 0))
+            self.available_computation_units -= self.queue_comp_units[0]
+            self.mec_comp_units = self.fill_first_zero(self.mec_comp_units, self.queue_comp_units[0])
+            self.mec_proc_times = self.fill_first_zero(self.mec_proc_times, self.queue_proc_times[0])
             if case_action:
-                self.available_computation_units -= self.queue_comp_units[0]
-                self.mec_comp_units = self.fill_first_zero(self.mec_comp_units, self.queue_comp_units[0])
-                self.mec_proc_times = self.fill_first_zero(self.mec_proc_times, self.queue_proc_times[0])
+                self.reward = self.queue_comp_units[0]
             else:
-                pass
-                # self.reward = -1 * self.queue_comp_units[0] # penalty
+                self.reward = -1 * self.queue_comp_units[0] # penalty
         else:
-            self.reward = (self.reward_weight * self.queue_comp_units[0]/100) if self.channel_quality == 1 else 0
+            self.reward = (self.reward_weight * self.queue_comp_units[0]) if self.channel_quality == 1 else 0
             
         self.channel_quality = self.change_channel_quality()
         self.remain_epochs = self.remain_epochs - 1

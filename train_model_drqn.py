@@ -260,25 +260,25 @@ if __name__ == "__main__":
         os.makedirs(output_path)
     writer = SummaryWriter(output_path + "/" + model_name + "_" + f"{timestamp}")
 
-    # Set parameters
-    batch_size = 1
-    learning_rate = 1e-4 #
-    buffer_len = int(100000)
-    min_epi_num = 20 # Start moment to train the Q network
-    episodes = 2000
-    print_per_iter = 20
-    target_update_period = 10 #
-    eps_start = 0.1
-    eps_end = 0.01 #
-    eps_decay = 0.998 #
-    tau = 1e-2
-    max_step = 20
+    # # Set parameters
+    # batch_size = 1
+    # learning_rate = 1e-4 #
+    # buffer_len = int(100000)
+    # min_epi_num = 20 # Start moment to train the Q network
+    # episodes = 2000
+    # print_per_iter = 20
+    # target_update_period = 10 #
+    # eps_start = 0.1
+    # eps_end = 0.01 #
+    # eps_decay = 0.998 #
+    # tau = 1e-2
+    # max_step = 20
 
-    # DRQN param
-    random_update = False # If you want to do random update instead of sequential update
-    lookup_step = 20 # If you want to do random update instead of sequential update
-    max_epi_len = 100 
-    max_epi_step = max_step
+    # # DRQN param
+    # random_update = False # If you want to do random update instead of sequential update
+    # lookup_step = 20 # If you want to do random update instead of sequential update
+    # max_epi_len = 100 
+    # max_epi_step = max_step
 
     state, info = env.reset()
     n_observation = len(env.flatten_dict_values(state))
