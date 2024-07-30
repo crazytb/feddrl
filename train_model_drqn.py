@@ -34,7 +34,7 @@ class Q_net(nn.Module):
         self.action_space = action_space
 
         self.Linear1 = nn.Linear(self.state_space, self.hidden_space)
-        self.lstm    = nn.LSTM(self.hidden_space,self.hidden_space, batch_first=True)
+        self.lstm    = nn.LSTM(self.hidden_space, self.hidden_space, batch_first=True)
         self.Linear2 = nn.Linear(self.hidden_space, self.action_space)
 
     def forward(self, x, h, c):
