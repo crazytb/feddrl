@@ -67,7 +67,7 @@ class CustomEnv(gym.Env):
         f_0 = 5.9e9 # Carrier freq = 5.9GHz, IEEE 802.11bd
         speedoflight = 300000   # km/sec
         f_d = velocity/(3600*speedoflight)*f_0  # Hz
-        packettime = 300    # us
+        packettime = 5000    # us
         fdtp = f_d*packettime/1e6
         TRAN_01 = (fdtp*math.sqrt(2*math.pi*snr_thr/snr_ave))/(np.exp(snr_thr/snr_ave)-1)
         TRAN_00 = 1 - TRAN_01
