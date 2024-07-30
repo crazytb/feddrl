@@ -149,8 +149,10 @@ class CustomEnv(gym.Env):
                 self.reward = self.queue_comp_units[0]
             else:
                 self.reward = -1 * self.queue_comp_units[0] # penalty
-        else:
+        elif action == 1:
             self.reward = (self.reward_weight * self.queue_comp_units[0]) if self.channel_quality == 1 else 0
+        else:
+            raise ValueError("Invalid action")
             
         self.channel_quality = self.change_channel_quality()
         self.remain_epochs = self.remain_epochs - 1

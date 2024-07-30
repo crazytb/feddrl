@@ -281,14 +281,24 @@ if __name__ == "__main__":
     # max_epi_step = max_step
 
     state, info = env.reset()
-    n_observation = len(env.flatten_dict_values(state))
+    # n_observation = len(env.flatten_dict_values(state))
     # Hidden state settings
-    n_states_to_be_hidden = 2*MAX_QUEUE_SIZE
+    target_key = ['available_computation_units',
+                  'number_of_associated_terminals',
+                #   'channel_quality',
+                  'remain_epochs',
+                  'mec_comp_units',
+                  'mec_proc_times',
+                  'queue_comp_units',
+                  'queue_proc_times']
+    state = {key: state[key] for key in target_key}
+    n_observation = len(env.flatten_dict_values(state))
+    # n_states_to_be_hidden = 2*MAX_QUEUE_SIZE
 
     # Create Q functions
-    Q = Q_net(state_space=n_observation-n_states_to_be_hidden, 
+    Q = Q_net(state_space=n_observation, 
               action_space=env.action_space.n).to(device)
-    Q_target = Q_net(state_space=n_observation-n_states_to_be_hidden, 
+    Q_target = Q_net(state_space=n_observation, 
                      action_space=env.action_space.n).to(device)
 
     Q_target.load_state_dict(Q.state_dict())
@@ -308,7 +318,7 @@ if __name__ == "__main__":
     # Train
     for i in range(episodes):
         s, _ = env.reset()
-        s = {k: v for k, v in list(s.items())[:-2]}
+        s = {key: s[key] for key in target_key}
         obs = env.flatten_dict_values(s)
         # obs = s[::2] # Use only Position of Cart and Pole
         # obs = np.delete(s, 2)
@@ -326,7 +336,7 @@ if __name__ == "__main__":
 
             # Do action
             s_prime, r, done, _, _ = env.step(a)
-            s_prime = {k: v for k, v in list(s_prime.items())[:-2]}
+            s_prime = {key: s_prime[key] for key in target_key}
             obs_prime = env.flatten_dict_values(s_prime)
 
             # make data

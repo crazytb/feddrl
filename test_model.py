@@ -32,6 +32,15 @@ elif torch.backends.mps.is_available():
 else:
     device = torch.device("cpu")
     
+target_key = ['available_computation_units',
+            'number_of_associated_terminals',
+        #   'channel_quality',
+            'remain_epochs',
+            'mec_comp_units',
+            'mec_proc_times',
+            'queue_comp_units',
+            'queue_proc_times']
+    
 # Make test model
 def test_model(env, model=None, iterations=200, simmode="dqn"):
     df = pd.DataFrame()
@@ -40,7 +49,7 @@ def test_model(env, model=None, iterations=200, simmode="dqn"):
         next_state, _ = env.reset()
         reward = 0
         for i in range(MAX_EPOCH_SIZE):
-            next_state = {k: v for k, v in list(next_state.items())[:-2]}
+            next_state = {key: next_state[key] for key in target_key}
             next_state = env.flatten_dict_values(next_state)
             # next_state = np.delete(next_state, 2)
             if simmode == "dqn":
@@ -78,11 +87,12 @@ test_env = CustomEnv(max_comp_units=MAX_COMP_UNITS,
                     max_epoch_size=MAX_EPOCH_SIZE,
                     max_queue_size=MAX_QUEUE_SIZE,
                     reward_weights=REWARD_WEIGHTS)
-n_observation = len(test_env.flatten_dict_values(test_env.reset()[0]))
+state, _ = test_env.reset()
+state = {key: state[key] for key in target_key}
+n_observation = len(test_env.flatten_dict_values(state))
 n_actions = test_env.action_space.n
-n_states_to_be_hidden = 2*MAX_QUEUE_SIZE
-dqn = model_dqn.Q_net(state_space=n_observation-n_states_to_be_hidden, action_space=n_actions).to(device)
-drqn = model_drqn.Q_net(state_space=n_observation-n_states_to_be_hidden, action_space=n_actions).to(device)
+dqn = model_dqn.Q_net(state_space=n_observation, action_space=n_actions).to(device)
+drqn = model_drqn.Q_net(state_space=n_observation, action_space=n_actions).to(device)
 # Load trained models
 dqn.load_state_dict(torch.load("DQN_POMDP_SEED_1.pth", map_location=device))
 drqn.load_state_dict(torch.load("DRQN_POMDP_Random_SEED_1.pth", map_location=device))
@@ -115,4 +125,4 @@ for i, simmode in enumerate(["dqn", "drqn", "offload_only", "local_only"]):
     filename = simmode + "_test_rewards.png"
     plt.savefig(filename)
 
-plt.show()
+# plt.show()
