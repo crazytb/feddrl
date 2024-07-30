@@ -236,7 +236,6 @@ if __name__ == "__main__":
     # Set gym environment
     # env = gym.make(env_name)
     env = CustomEnv(max_comp_units=MAX_COMP_UNITS,
-                max_terminals=MAX_TERMINALS, 
                 max_epoch_size=MAX_EPOCH_SIZE,
                 max_queue_size=MAX_QUEUE_SIZE,
                 reward_weights=REWARD_WEIGHTS)
@@ -284,7 +283,6 @@ if __name__ == "__main__":
     # n_observation = len(env.flatten_dict_values(state))
     # Hidden state settings
     target_key = ['available_computation_units',
-                  'number_of_associated_terminals',
                 #   'channel_quality',
                   'remain_epochs',
                   'mec_comp_units',
@@ -320,8 +318,6 @@ if __name__ == "__main__":
         s, _ = env.reset()
         s = {key: s[key] for key in target_key}
         obs = env.flatten_dict_values(s)
-        # obs = s[::2] # Use only Position of Cart and Pole
-        # obs = np.delete(s, 2)
         done = False
         
         episode_record = EpisodeBuffer()

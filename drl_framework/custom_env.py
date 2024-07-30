@@ -9,16 +9,16 @@ import random
 # https://www.youtube.com/@cartoonsondemand
 
 class CustomEnv(gym.Env):
-    def __init__(self, max_comp_units, max_terminals, max_epoch_size, max_queue_size, reward_weights):
+    def __init__(self, max_comp_units, max_epoch_size, max_queue_size, reward_weights):
         super(CustomEnv, self).__init__()
         self.max_comp_units = max_comp_units
-        self.max_terminals = max_terminals
+        # self.max_terminals = max_terminals
         self.max_epoch_size = max_epoch_size
         self.max_queue_size = max_queue_size
 
         self.reward_weight = reward_weights
         self.max_available_computation_units = max_comp_units
-        self.max_number_of_associated_terminals = max_terminals
+        # self.max_number_of_associated_terminals = max_terminals
         self.max_channel_quality = 2
         self.max_remain_epochs = max_epoch_size
         self.max_comp_units = np.array([max_comp_units] * max_queue_size)
@@ -32,7 +32,7 @@ class CustomEnv(gym.Env):
 
         self.observation_space = spaces.Dict({
             "available_computation_units": spaces.Discrete(self.max_available_computation_units),
-            "number_of_associated_terminals": spaces.Discrete(self.max_number_of_associated_terminals),
+            # "number_of_associated_terminals": spaces.Discrete(self.max_number_of_associated_terminals),
             "channel_quality": spaces.Discrete(self.max_channel_quality),
             "remain_epochs": spaces.Discrete(self.max_remain_epochs),
             "mec_comp_units": spaces.MultiDiscrete([max_comp_units] * max_queue_size),
@@ -45,7 +45,7 @@ class CustomEnv(gym.Env):
        
     def get_obs(self):
         return {"available_computation_units": self.available_computation_units,
-                "number_of_associated_terminals": self.number_of_associated_terminals,
+                # "number_of_associated_terminals": self.number_of_associated_terminals,
                 "channel_quality": self.channel_quality,
                 "remain_epochs": self.remain_epochs,
                 "mec_comp_units": self.mec_comp_units,
@@ -111,7 +111,7 @@ class CustomEnv(gym.Env):
         super().reset(seed=seed)
 
         self.available_computation_units = self.max_available_computation_units
-        self.number_of_associated_terminals = self.rng.integers(1, self.max_number_of_associated_terminals + 1, size=1)
+        # self.number_of_associated_terminals = self.rng.integers(1, self.max_number_of_associated_terminals + 1, size=1)
         self.channel_quality = self.rng.integers(0, self.max_channel_quality)
         self.remain_epochs = self.max_remain_epochs
         self.remain_processing = 0
@@ -132,35 +132,35 @@ class CustomEnv(gym.Env):
         """
         self.reward = 0
         # forwarding phase
-        # 0: local process, 1: offload
-        if action == 0:
-            # if available computation units are enough to process the first queue task and 
-            # mec_comp_unit has empty slot and 
-            # queue_comp_units has nonzero value.
+        # 0: local process, 1: offload, 2: collect information
+        if action == 0:  # Local process
             case_action = ((self.available_computation_units >= self.queue_comp_units[0]) and 
                            (self.mec_comp_units[self.mec_comp_units == 0].size > 0) and
                            (self.queue_comp_units[0] > 0))
-            self.available_computation_units -= self.queue_comp_units[0]
-            if self.available_computation_units < 0:
-                self.available_computation_units = 0
-            self.mec_comp_units = self.fill_first_zero(self.mec_comp_units, self.queue_comp_units[0])
-            self.mec_proc_times = self.fill_first_zero(self.mec_proc_times, self.queue_proc_times[0])
             if case_action:
-                self.reward = self.queue_comp_units[0]
+                self.available_computation_units -= self.queue_comp_units[0]
+                self.mec_comp_units = self.fill_first_zero(self.mec_comp_units, self.queue_comp_units[0])
+                self.mec_proc_times = self.fill_first_zero(self.mec_proc_times, self.queue_proc_times[0])
             else:
-                self.reward = -1 * self.queue_comp_units[0] # penalty
-        elif action == 1:
-            self.reward = (self.reward_weight * self.queue_comp_units[0]) if self.channel_quality == 1 else 0
+                pass
+            self.queue_comp_units = np.concatenate([self.queue_comp_units[1:], np.array([0])])
+            self.queue_proc_times = np.concatenate([self.queue_proc_times[1:], np.array([0])])
+        elif action == 1:   # Offload
+            if self.queue_comp_units[0] > 0:
+                reward = self.queue_comp_units[0]
+                self.queue_comp_units = np.concatenate([self.queue_comp_units[1:], np.array([0])])
+                self.queue_proc_times = np.concatenate([self.queue_proc_times[1:], np.array([0])])
+                if self.channel_quality == 1:
+                    self.reward = (self.reward_weight * reward)
+                elif self.channel_quality == 0:
+                    pass
         else:
             raise ValueError("Invalid action")
             
         self.channel_quality = self.change_channel_quality()
         self.remain_epochs = self.remain_epochs - 1
-        # shift left-wise queue information with 1 and pad 0
-        self.queue_comp_units = np.concatenate([self.queue_comp_units[1:], np.array([0])])
-        self.queue_proc_times = np.concatenate([self.queue_proc_times[1:], np.array([0])])
 
-        # processing phase
+        # Processing phase
         zeroed_index = (self.mec_proc_times == 1)
         if zeroed_index.any():
             self.available_computation_units += self.mec_comp_units[zeroed_index].sum()

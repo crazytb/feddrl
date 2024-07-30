@@ -33,7 +33,6 @@ else:
     device = torch.device("cpu")
     
 target_key = ['available_computation_units',
-            'number_of_associated_terminals',
         #   'channel_quality',
             'remain_epochs',
             'mec_comp_units',
@@ -83,7 +82,6 @@ def test_model(env, model=None, iterations=200, simmode="dqn"):
     
 # Define test env and test model    
 test_env = CustomEnv(max_comp_units=MAX_COMP_UNITS,
-                    max_terminals=MAX_TERMINALS,
                     max_epoch_size=MAX_EPOCH_SIZE,
                     max_queue_size=MAX_QUEUE_SIZE,
                     reward_weights=REWARD_WEIGHTS)
