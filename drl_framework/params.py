@@ -1,8 +1,8 @@
 # Env parameters
 MAX_COMP_UNITS = 100
 MAX_TERMINALS = 10
-MAX_EPOCH_SIZE = 20
-MAX_QUEUE_SIZE = 20 # MAX_EPOCH_SIZE and MAX_QUEUE_SIZE should be the same
+MAX_EPOCH_SIZE = 200 #
+MAX_QUEUE_SIZE = 20
 REWARD_WEIGHTS = 0.1
 
 # DQN parameters
@@ -27,7 +27,7 @@ learning_rate = 1e-4 #
 buffer_len = int(100000)
 min_buffer_len = 20
 min_epi_num = 20 # Start moment to train the Q network
-episodes = 10000 #
+episodes = 5000 #
 print_per_iter = 20
 target_update_period = 10 #
 eps_start = 0.1

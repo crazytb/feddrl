@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 from collections import namedtuple, deque
 from itertools import count, chain
 import pandas as pd
+from tqdm import tqdm
 
 import torch
 import torch.nn as nn
@@ -41,10 +42,10 @@ target_key = ['available_computation_units',
             'queue_proc_times']
     
 # Make test model
-def test_model(env, model=None, iterations=200, simmode="dqn"):
+def test_model(env, model=None, iterations=MAX_EPOCH_SIZE, simmode="dqn"):
     df = pd.DataFrame()
     rewards = []
-    for iter in range(iterations):
+    for iter in tqdm(range(iterations)):
         next_state, _ = env.reset()
         reward = 0
         for i in range(MAX_EPOCH_SIZE):
@@ -104,8 +105,8 @@ for i, simmode in enumerate(["dqn", "drqn", "offload_only", "local_only"]):
         model = drqn
     else:
         model = None
-    df, rewards = test_model(test_env, model=model, iterations=500, simmode=simmode)
-    filename = simmode + "_test_log.csv"
+    df, rewards = test_model(test_env, model=model, iterations=MAX_EPOCH_SIZE, simmode=simmode)
+    filename = "test_log_" + simmode + ".csv"
     df.to_csv(filename)
 
     # Plot rewards
@@ -120,7 +121,7 @@ for i, simmode in enumerate(["dqn", "drqn", "offload_only", "local_only"]):
     means = torch.cat((torch.zeros(19), means))
     plt.plot(means.numpy())
     # Save plot into files
-    filename = simmode + "_test_rewards.png"
+    filename = "test_rewards_" + simmode + ".png"
     plt.savefig(filename)
 
 # plt.show()

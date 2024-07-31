@@ -4,6 +4,7 @@ import numpy as np
 from numpy.random import default_rng
 import math
 import random
+from .params import *
 
 # https://gymnasium.farama.org/tutorials/gymnasium_basics/environment_creation/
 # https://www.youtube.com/@cartoonsondemand
@@ -21,9 +22,10 @@ class CustomEnv(gym.Env):
         # self.max_number_of_associated_terminals = max_terminals
         self.max_channel_quality = 2
         self.max_remain_epochs = max_epoch_size
-        self.max_comp_units = np.array([max_comp_units] * max_queue_size)
+        # self.max_comp_units = np.array([max_comp_units] * max_queue_size)
         # self.max_proc_times = np.array([max_epoch_size] * max_queue_size)
-        self.max_proc_times = np.array([int(np.ceil(max_epoch_size/2))] * max_queue_size)
+        # self.max_proc_times = np.array([int(np.ceil(max_epoch_size/2))] * max_queue_size)
+        self.max_proc_times = int(np.ceil(max_epoch_size/2))
 
         # 0: process, 1: offload
         self.action_space = spaces.Discrete(2)
@@ -37,8 +39,10 @@ class CustomEnv(gym.Env):
             "remain_epochs": spaces.Discrete(self.max_remain_epochs),
             "mec_comp_units": spaces.MultiDiscrete([max_comp_units] * max_queue_size),
             "mec_proc_times": spaces.MultiDiscrete([max_epoch_size] * max_queue_size),
-            "queue_comp_units": spaces.MultiDiscrete([max_comp_units] * max_queue_size),
-            "queue_proc_times": spaces.MultiDiscrete([max_epoch_size] * max_queue_size),
+            "queue_comp_units": spaces.Discrete(max_comp_units, start=1),
+            "queue_proc_times": spaces.Discrete(max_epoch_size, start=1),
+            # "queue_comp_units": spaces.MultiDiscrete([max_comp_units] * max_epoch_size),
+            # "queue_proc_times": spaces.MultiDiscrete([max_epoch_size] * max_epoch_size),
         })
         self.rng = default_rng()
         self.current_obs = None
@@ -67,7 +71,8 @@ class CustomEnv(gym.Env):
         f_0 = 5.9e9 # Carrier freq = 5.9GHz, IEEE 802.11bd
         speedoflight = 300000   # km/sec
         f_d = velocity/(3600*speedoflight)*f_0  # Hz
-        packettime = 5000    # us
+        packettime = 100*1000/MAX_EPOCH_SIZE
+        # packettime = 5000    # us
         fdtp = f_d*packettime/1e6
         TRAN_01 = (fdtp*math.sqrt(2*math.pi*snr_thr/snr_ave))/(np.exp(snr_thr/snr_ave)-1)
         TRAN_00 = 1 - TRAN_01
@@ -117,8 +122,8 @@ class CustomEnv(gym.Env):
         self.remain_processing = 0
         self.mec_comp_units = np.zeros(self.max_queue_size, dtype=int)
         self.mec_proc_times = np.zeros(self.max_queue_size, dtype=int)
-        self.queue_comp_units = self.rng.integers(1, self.max_comp_units + 1, size=self.max_queue_size)
-        self.queue_proc_times = self.rng.integers(1, self.max_proc_times + 1, size=self.max_queue_size)
+        self.queue_comp_units = self.rng.integers(1, self.max_comp_units + 1)
+        self.queue_proc_times = self.rng.integers(1, self.max_proc_times + 1)
 
         self.reward = 0
 
@@ -132,30 +137,30 @@ class CustomEnv(gym.Env):
         """
         self.reward = 0
         # forwarding phase
-        # 0: local process, 1: offload, 2: collect information
+        # 0: local process, 1: offload
         if action == 0:  # Local process
-            case_action = ((self.available_computation_units >= self.queue_comp_units[0]) and 
+            case_action = ((self.available_computation_units >= self.queue_comp_units) and 
                            (self.mec_comp_units[self.mec_comp_units == 0].size > 0) and
-                           (self.queue_comp_units[0] > 0))
+                           (self.queue_comp_units > 0))
             if case_action:
-                self.available_computation_units -= self.queue_comp_units[0]
-                self.mec_comp_units = self.fill_first_zero(self.mec_comp_units, self.queue_comp_units[0])
-                self.mec_proc_times = self.fill_first_zero(self.mec_proc_times, self.queue_proc_times[0])
+                self.available_computation_units -= self.queue_comp_units
+                self.mec_comp_units = self.fill_first_zero(self.mec_comp_units, self.queue_comp_units)
+                self.mec_proc_times = self.fill_first_zero(self.mec_proc_times, self.queue_proc_times)
             else:
                 pass
-            self.queue_comp_units = np.concatenate([self.queue_comp_units[1:], np.array([0])])
-            self.queue_proc_times = np.concatenate([self.queue_proc_times[1:], np.array([0])])
         elif action == 1:   # Offload
-            if self.queue_comp_units[0] > 0:
-                reward = self.queue_comp_units[0]
-                self.queue_comp_units = np.concatenate([self.queue_comp_units[1:], np.array([0])])
-                self.queue_proc_times = np.concatenate([self.queue_proc_times[1:], np.array([0])])
+            if self.queue_comp_units > 0:
+                reward = self.queue_comp_units
+                self.queue_comp_units = self.rng.integers(1, self.max_comp_units + 1)
+                self.queue_proc_times = self.rng.integers(1, self.max_proc_times + 1)
                 if self.channel_quality == 1:
                     self.reward = (self.reward_weight * reward)
                 elif self.channel_quality == 0:
                     pass
         else:
             raise ValueError("Invalid action")
+        self.queue_comp_units = self.rng.integers(1, self.max_comp_units + 1)
+        self.queue_proc_times = self.rng.integers(1, self.max_proc_times + 1)
             
         self.channel_quality = self.change_channel_quality()
         self.remain_epochs = self.remain_epochs - 1
