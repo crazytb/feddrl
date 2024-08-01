@@ -105,7 +105,7 @@ for i, simmode in enumerate(["dqn", "drqn", "offload_only", "local_only"]):
         model = drqn
     else:
         model = None
-    df, rewards = test_model(test_env, model=model, iterations=MAX_EPOCH_SIZE, simmode=simmode)
+    df, rewards = test_model(test_env, model=model, iterations=200, simmode=simmode)
     filename = "test_log_" + simmode + ".csv"
     df.to_csv(filename)
 

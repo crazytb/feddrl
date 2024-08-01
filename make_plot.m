@@ -59,8 +59,8 @@ plot(drqn_train(:, 1), movmean(drqn_train(:, 2), window_size), 'Color', "#0072BD
 plot(dqn_train(:, 1), movmean(dqn_train(:, 2), window_size), 'Color', "#D95319", 'LineWidth', 2)
 
 legend('PORTO-MEC (DRQN)', 'OTO-MEC (DQN)', 'location', 'best')
-xlabel('Episode Rewards')
-ylabel('Frequency')
+xlabel('Episode #')
+ylabel('Reward')
 title('')
 grid on
 hold off;
