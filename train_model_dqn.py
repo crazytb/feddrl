@@ -1,10 +1,7 @@
 import sys
-from typing import Dict, List, Tuple
-from datetime import datetime
+from typing import Dict
 import os
 
-import gymnasium as gym
-import collections
 import random
 import numpy as np
 
@@ -29,7 +26,6 @@ class Q_net(nn.Module):
         assert action_space is not None, "None action_space input: action_space should be selected."
 
         self.Linear1 = nn.Linear(state_space, 64)
-        # self.lstm    = nn.LSTMCell(64,64)
         self.Linear2 = nn.Linear(64, 64)
         self.Linear3 = nn.Linear(64, action_space)
 
@@ -117,25 +113,13 @@ def train(q_net=None, target_q_net=None, replay_buffer=None,
     loss.backward()
     optimizer.step()
 
-def seed_torch(seed):
-        torch.manual_seed(seed)
-        if torch.backends.cudnn.enabled:
-            torch.backends.cudnn.benchmark = False
-            torch.backends.cudnn.deterministic = True
-
-def save_model(model, path='default.pth'):
-        torch.save(model.state_dict(), path)
-
 if __name__ == "__main__":
 
     # Env parameters
     model_name = "DQN_POMDP"
-    env_name = "CartPole-v1"
-    seed = 1
-    exp_num = 'SEED'+'_'+str(seed)
+    seed = 42
 
     # Set gym environment
-    # env = gym.make(env_name)
     env = CustomEnv(max_comp_units=MAX_COMP_UNITS,
                 max_epoch_size=MAX_EPOCH_SIZE,
                 max_queue_size=MAX_QUEUE_SIZE,
@@ -154,31 +138,16 @@ if __name__ == "__main__":
     seed_torch(seed)
 
     # Summarywriter setting
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_path = 'outputs'
     if not os.path.exists(output_path):
         os.makedirs(output_path)
-    writer = SummaryWriter(output_path + "/" + model_name + "_" + f"{timestamp}")
-
-    # # Set parameters
-    # batch_size = 64
-    # learning_rate = 1e-3
-    # buffer_len = int(100000)
-    # min_buffer_len = batch_size
-    # episodes = 2000
-    # print_per_iter = 20
-    # target_update_period = 4
-    # eps_start = 0.1
-    # eps_end = 0.001
-    # eps_decay = 0.995
-    # tau = 1*1e-2
-    # max_step = 20
+    writer = SummaryWriter(output_path + "/" + model_name + "_" + f"{TIMESTAMP}")
 
     state, info = env.reset()
     # n_observation = len(env.flatten_dict_values(state))
     # Hidden state settings
     target_key = ['available_computation_units',
-                #   'channel_quality',
+                  'channel_quality',
                   'remain_epochs',
                   'mec_comp_units',
                   'mec_proc_times',
@@ -213,8 +182,6 @@ if __name__ == "__main__":
         s, _ = env.reset()
         s = {key: s[key] for key in target_key}
         s = env.flatten_dict_values(s)
-        # obs = s[::2] # Use only Position of Cart and Pole
-        # s = np.delete(s, [])
         done = False
         
         for t in range(max_step):
@@ -244,7 +211,6 @@ if __name__ == "__main__":
                         learning_rate=learning_rate)
 
                 if (t+1) % target_update_period == 0:
-                    # Q_target.load_state_dict(Q.state_dict())
                     for target_param, local_param in zip(Q_target.parameters(), Q.parameters()):
                             target_param.data.copy_(tau*local_param.data + (1.0 - tau)*target_param.data)
     
@@ -257,11 +223,11 @@ if __name__ == "__main__":
             print("n_episode :{}, score : {:.1f}, n_buffer : {}, eps : {:.1f}%".format(
                                                             i, score_sum/print_per_iter, len(replay_buffer), epsilon*100))
             score_sum=0.0
-            save_model(Q, model_name+"_"+exp_num+'.pth')
 
         # Log the reward
         writer.add_scalar('Rewards per episodes', score, i)
         score = 0
-        
+    
+    save_model(Q, model_name+"_"+f"{TIMESTAMP}.pth")
     writer.close()
     env.close()
