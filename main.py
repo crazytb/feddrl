@@ -4,12 +4,13 @@ from drl_framework.networks import LocalNetwork
 from drl_framework.trainer import train_single_agent, train_federated_agents
 from drl_framework.utils import *
 from drl_framework.custom_env import *
+from drl_framework.params import device
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
 def main():
-    # Device configuration
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
+    print(f"Device: {device}")
     
     # Set the seed
     seed = 42

@@ -2,8 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+from .params import device
 
 class SharedMLP(nn.Module):
     """Shared MLP layers for federated learning"""
