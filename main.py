@@ -25,10 +25,7 @@ def main():
                     reward_weights=0.1,
                     agent_velocities=10
                     )
-    # state_dim = env.observation_space.shape[0]
-    # state_dim = gym.spaces.utils.flatten_space(env.observation_space).shape[0]
     state_dim = len(flatten_dict_values(env.observation_space.sample()))
-    
     action_dim = env.action_space.n
     hidden_dim = 8
     episodes = 5000
