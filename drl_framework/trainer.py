@@ -2,7 +2,7 @@ import torch
 from typing import List
 import gymnasium as gym
 from .utils import *
-from .networks import average_shared_mlp
+from .networks import *
 import numpy as np
 import os
 from torch.utils.tensorboard import SummaryWriter
@@ -168,7 +168,7 @@ def train_single_agent(
 
 @measure_time
 def train_federated_agents(
-    env: gym.Env,
+    envs: List[gym.Env],
     agents: List[torch.nn.Module],
     optimizers: List[torch.optim.Optimizer],
     device: torch.device,
@@ -182,7 +182,8 @@ def train_federated_agents(
     batch_size: int = 32,
     buffer_size: int = 100000,
     min_samples: int = 1000,
-    hidden_dim: int = 8
+    hidden_dim: int = 8,
+    averaging_scheme: str = 'fedavg'
 ) -> np.ndarray:
     """Train multiple agents using federated DQN with replay buffer
     
@@ -193,14 +194,25 @@ def train_federated_agents(
         np.ndarray: Rewards for each agent (shape: [n_agents, episodes])
     """
     # SummaryWriter for TensorBoard
-    writer = SummaryWriter(output_path + "/" + "federated" + "_" + TIMESTAMP)
+    writer = SummaryWriter(output_path + "/" + averaging_scheme + "_" + TIMESTAMP)
+    
+    """
+    schemes = {
+        'fedavg': fedavg_shared_mlp,
+        'fedprox': fedprox_shared_mlp,
+        'fedadam': fedadam_shared_mlp,
+        'weighted': weighted_shared_mlp
+    }
+    """
+    averaging_scheme = get_averaging_scheme(averaging_scheme)  # or 'fedadam', 'weighted'
+
     
     # Initialize target networks for each agent
     # state_dim = gym.spaces.utils.flatten_space(env.observation_space).shape[0]
-    state_dim = len(flatten_dict_values(env.observation_space.sample()))
+    state_dim = len(flatten_dict_values(envs[0].observation_space.sample()))
     # target_nets = [type(agent)(env.observation_space.shape[0], env.action_space.n, hidden_dim).to(device)
     #               for agent in agents]
-    target_nets = [type(agent)(state_dim, env.action_space.n, hidden_dim).to(device)
+    target_nets = [type(agent)(state_dim, envs[0].action_space.n, hidden_dim).to(device)
                   for agent in agents]
     for target_net, agent in zip(target_nets, agents):
         target_net.load_state_dict(agent.state_dict())
@@ -214,7 +226,7 @@ def train_federated_agents(
 
     for episode in range(episodes):
         for agent_idx, (agent, optimizer, target_net, memory) in enumerate(zip(agents, optimizers, target_nets, memories)):
-            state, _ = env.reset()
+            state, _ = envs[agent_idx].reset()
             state = flatten_dict_values(state)
             episode_reward = 0
             done = False
@@ -224,13 +236,13 @@ def train_federated_agents(
                 
                 # Select action (ε-greedy)
                 if np.random.random() < epsilon:
-                    action = env.action_space.sample()
+                    action = envs[agent_idx].action_space.sample()
                 else:
                     with torch.no_grad():
                         action = agent(state_tensor).argmax().item()
                 
                 # Take action in environment
-                next_state, reward, done, _, _ = env.step(action)
+                next_state, reward, done, _, _ = envs[agent_idx].step(action)
                 done_float = 0.0 if done else 1.0
                 episode_reward += reward
                 
@@ -258,6 +270,9 @@ def train_federated_agents(
                 
                 state = next_state
             
+            agent.last_state = next_state
+            agent.last_velocity = envs[agent_idx].agent_velocity
+            
             # Store episode reward for this agent
             episode_rewards[agent_idx, episode] = episode_reward
             
@@ -267,7 +282,13 @@ def train_federated_agents(
         
         # Synchronize agents
         if episode % sync_interval == 0:
-            average_shared_mlp(agents)
+            # average_shared_mlp(agents)
+            # Update performance metrics
+            for agent in agents:
+                agent.update_performance_metric(episode_reward)
+            
+            # Apply chosen averaging scheme
+            averaging_scheme(agents)
         
         # Decay epsilon
         epsilon = max(epsilon_end, epsilon * epsilon_decay)

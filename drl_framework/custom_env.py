@@ -14,8 +14,9 @@ class CustomEnv(gym.Env):
                  max_comp_units,
                  max_epoch_size,
                  max_queue_size,
-                 reward_weights=0.1,
-                 agent_velocities=None
+                 reward_weights=1,
+                 agent_velocity=None,
+                 channel_pattern=None,
                  ):
         super().__init__()
         self.max_comp_units = max_comp_units
@@ -23,7 +24,8 @@ class CustomEnv(gym.Env):
         self.max_epoch_size = max_epoch_size
         self.max_queue_size = max_queue_size
         self.reward_weight = reward_weights
-        self.agent_velocities = agent_velocities if agent_velocities else 10
+        self.agent_velocity = agent_velocity if agent_velocity else 10
+        self.channel_pattern = channel_pattern
         self.max_available_computation_units = max_comp_units
         # self.max_number_of_associated_terminals = max_terminals
         self.max_channel_quality = 2
@@ -70,16 +72,27 @@ class CustomEnv(gym.Env):
             return 0
     
     def change_channel_quality(self):
-        # State settings
-        velocity = self.agent_velocities # km/h
-        snr_thr = 15
-        snr_ave = snr_thr + 10
+        if self.channel_pattern == 'urban':
+            # High buildings, frequent state changes
+            velocity = self.agent_velocity
+            snr_thr = 20  # Higher SNR threshold in urban areas
+            snr_ave = snr_thr + 15
+        elif self.channel_pattern == 'suburban':
+            velocity = self.agent_velocity
+            snr_thr = 15
+            snr_ave = snr_thr + 10
+        else:  # rural
+            velocity = self.agent_velocity
+            snr_thr = 10  # Lower SNR threshold in rural areas
+            snr_ave = snr_thr + 5
+        
         f_0 = 5.9e9 # Carrier freq = 5.9GHz, IEEE 802.11bd
         speedoflight = 300000   # km/sec
         f_d = velocity/(3600*speedoflight)*f_0  # Hz
         packettime = 100*1000/MAX_EPOCH_SIZE
         # packettime = 5000    # us
         fdtp = f_d*packettime/1e6
+        
         TRAN_01 = (fdtp*math.sqrt(2*math.pi*snr_thr/snr_ave))/(np.exp(snr_thr/snr_ave)-1)
         TRAN_00 = 1 - TRAN_01
         # TRAN_11 = fdtp*math.sqrt((2*math.pi*snr_thr)/snr_ave)

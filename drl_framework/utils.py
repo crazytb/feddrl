@@ -33,7 +33,7 @@ def plot_rewards(single_agent_rewards, federated_rewards, sync_interval=10):
         sync_interval: Number of episodes between synchronizations
     """
     plt.figure(figsize=(10, 6))
-    plt.plot(single_agent_rewards, label='Single Agent', alpha=0.8)
+    plt.plot(single_agent_rewards, label='Individual Agents', alpha=0.8)
     plt.plot(federated_rewards, label='Federated Agents', alpha=0.8)
     
     plt.xlabel('Episode')
