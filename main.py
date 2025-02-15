@@ -32,12 +32,13 @@ def main():
     state_dim = len(flatten_dict_values(env.observation_space.sample()))
     action_dim = env.action_space.n
     hidden_dim = 16
-    episodes = 1000
+    episodes = 5000
     learning_rate = 0.001
     sync_interval = 100
 
     # Federated Agents Training
-    averaging_schemes = ['fedavg', 'fedprox', 'fedadam', 'fedcustom']
+    # averaging_schemes = ['fedavg', 'fedprox', 'fedadam', 'fedcustom']
+    averaging_schemes = ['fedcustom']
     for scheme in averaging_schemes:
         agents_fed = [LocalNetwork(state_dim, action_dim, hidden_dim).to(device) for _ in range(n_agents)]
         optimizers_fed = [torch.optim.Adam(agent.parameters(), lr=learning_rate) for agent in agents_fed]
