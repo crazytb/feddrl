@@ -10,14 +10,20 @@ from .params import *
 # https://www.youtube.com/@cartoonsondemand
 
 class CustomEnv(gym.Env):
-    def __init__(self, max_comp_units, max_epoch_size, max_queue_size, reward_weights=0.1):
-        super(CustomEnv, self).__init__()
+    def __init__(self,
+                 max_comp_units,
+                 max_epoch_size,
+                 max_queue_size,
+                 reward_weights=0.1,
+                 agent_velocities=None
+                 ):
+        super().__init__()
         self.max_comp_units = max_comp_units
         # self.max_terminals = max_terminals
         self.max_epoch_size = max_epoch_size
         self.max_queue_size = max_queue_size
-
         self.reward_weight = reward_weights
+        self.agent_velocities = agent_velocities if agent_velocities else 10
         self.max_available_computation_units = max_comp_units
         # self.max_number_of_associated_terminals = max_terminals
         self.max_channel_quality = 2
@@ -65,7 +71,7 @@ class CustomEnv(gym.Env):
     
     def change_channel_quality(self):
         # State settings
-        velocity = 10   # km/h
+        velocity = self.agent_velocities # km/h
         snr_thr = 15
         snr_ave = snr_thr + 10
         f_0 = 5.9e9 # Carrier freq = 5.9GHz, IEEE 802.11bd
@@ -81,17 +87,10 @@ class CustomEnv(gym.Env):
         TRAN_11 = 1 - TRAN_10
 
         if self.channel_quality == 0:  # Bad state
-            if self.stepfunc(TRAN_00, random.random()) == 0: # 0 to 0
-                channel_quality = 0
-            else:   # 0 to 1
-                channel_quality = 1
+            return 1 if random.random() > TRAN_00 else 0
         else:   # Good state
-            if self.stepfunc(TRAN_11, random.random()) == 0: # 1 to 1
-                channel_quality = 1
-            else:   # 1 to 0
-                channel_quality = 0
-    
-        return channel_quality
+            return 0 if random.random() > TRAN_11 else 1
+
     
     def fill_first_zero(self, arr, value):
         for i in range(len(arr)):

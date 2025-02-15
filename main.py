@@ -19,7 +19,12 @@ def main():
     
     # Environment and hyperparameters
     # env = gym.make("CartPole-v1")
-    env = CustomEnv(max_comp_units=10, max_epoch_size=10, max_queue_size=5, reward_weights=0.1)
+    env = CustomEnv(max_comp_units=10,
+                    max_epoch_size=10,
+                    max_queue_size=5,
+                    reward_weights=0.1,
+                    agent_velocities=10
+                    )
     # state_dim = env.observation_space.shape[0]
     # state_dim = gym.spaces.utils.flatten_space(env.observation_space).shape[0]
     state_dim = len(flatten_dict_values(env.observation_space.sample()))
