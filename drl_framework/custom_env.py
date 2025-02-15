@@ -10,7 +10,7 @@ from .params import *
 # https://www.youtube.com/@cartoonsondemand
 
 class CustomEnv(gym.Env):
-    def __init__(self, max_comp_units, max_epoch_size, max_queue_size, reward_weights):
+    def __init__(self, max_comp_units, max_epoch_size, max_queue_size, reward_weights=0.1):
         super(CustomEnv, self).__init__()
         self.max_comp_units = max_comp_units
         # self.max_terminals = max_terminals
@@ -46,7 +46,7 @@ class CustomEnv(gym.Env):
         })
         self.rng = default_rng()
         self.current_obs = None
-       
+    
     def get_obs(self):
         return {"available_computation_units": self.available_computation_units,
                 # "number_of_associated_terminals": self.number_of_associated_terminals,
@@ -100,14 +100,7 @@ class CustomEnv(gym.Env):
                 break
         return arr
     
-    def flatten_dict_values(self, dict):
-        flattened = np.array([])
-        for v in list(dict.values()):
-            if isinstance(v, np.ndarray):
-                flattened = np.concatenate([flattened, v])
-            else:
-                flattened = np.concatenate([flattened, np.array([v])])
-        return flattened
+    
 
     def reset(self, seed=None, options=None):
         """

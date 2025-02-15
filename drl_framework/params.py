@@ -46,29 +46,3 @@ lookup_step = 20 # If you want to do random update instead of sequential update
 max_epi_len = 100 
 max_epi_step = max_step
 
-def get_fixed_timestamp():
-    timestamp_file = '#timestamp.txt'
-    if os.path.exists(timestamp_file):
-        with open(timestamp_file, 'r') as f:
-            return f.read().strip()
-    else:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        with open(timestamp_file, 'w') as f:
-            f.write(timestamp)
-        return timestamp
-    
-def seed_torch(seed):
-    torch.manual_seed(seed)
-    if torch.backends.cudnn.enabled:
-        torch.backends.cudnn.benchmark = False
-        torch.backends.cudnn.deterministic = True
-
-def save_model(model, path='default.pth'):
-    models_dir = 'models'
-    if not os.path.exists(models_dir):
-        os.makedirs(models_dir)
-    save_path = os.path.join(models_dir, path)
-    torch.save(model.state_dict(), save_path)
-    print(f"Model saved at {save_path}")
-    
-TIMESTAMP = get_fixed_timestamp()
