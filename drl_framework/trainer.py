@@ -183,7 +183,8 @@ def train_federated_agents(
     buffer_size: int = 100000,
     min_samples: int = 1000,
     hidden_dim: int = 8,
-    averaging_scheme: str = 'fedavg'
+    averaging_scheme: str = 'fedavg',
+    cloud_controller=None
 ) -> np.ndarray:
     """Train multiple agents using federated DQN with replay buffer
     
@@ -225,6 +226,7 @@ def train_federated_agents(
     epsilon = epsilon_start
 
     for episode in range(episodes):
+        cloud_controller.reset()
         for agent_idx, (agent, optimizer, target_net, memory) in enumerate(zip(agents, optimizers, target_nets, memories)):
             state, _ = envs[agent_idx].reset()
             state = flatten_dict_values(state)
@@ -245,7 +247,7 @@ def train_federated_agents(
                 next_state, reward, done, _, _ = envs[agent_idx].step(action)
                 done_float = 0.0 if done else 1.0
                 episode_reward += reward
-                
+                agent.last_state = next_state
                 # Store transition in replay buffer
                 next_state = flatten_dict_values(next_state)
                 memory.store(state, action, reward, next_state, done_float)
@@ -270,7 +272,7 @@ def train_federated_agents(
                 
                 state = next_state
             
-            agent.last_state = next_state
+            
             agent.last_velocity = envs[agent_idx].agent_velocity
             
             # Store episode reward for this agent

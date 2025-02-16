@@ -39,7 +39,8 @@ class LocalNetwork(nn.Module):
         # Shared feature extractor
         self.mlp = SharedMLP(state_dim, hidden_dim).to(device)
         # Q-value head
-        self.q_head = nn.Linear(hidden_dim, action_dim).to(device)
+        self.q_head1 = nn.Linear(hidden_dim, hidden_dim).to(device)
+        self.q_head2 = nn.Linear(hidden_dim, action_dim).to(device)
         # Performance metric
         self.performance_metric = 0.0
         self.last_state = None
@@ -48,7 +49,8 @@ class LocalNetwork(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass to get Q-values for all actions"""
         x = self.mlp(x.to(device))
-        q_values = self.q_head(x)
+        x = F.relu(self.q_head1(x))
+        q_values = self.q_head2(x)
         return q_values
     
     def get_q_value(self, state: torch.Tensor, action: int) -> torch.Tensor:
