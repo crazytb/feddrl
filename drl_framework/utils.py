@@ -2,9 +2,64 @@ import time
 import torch
 import matplotlib.pyplot as plt
 import os
+import pandas as pd
 from datetime import datetime
 import numpy as np
 
+
+class TrainingLogger:
+    """Logger for federated training data"""
+    def __init__(self, num_agents, scheme_name):
+        self.num_agents = num_agents
+        self.scheme_name = scheme_name
+        self.data = []
+        self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        # Create logs directory if it doesn't exist
+        os.makedirs('logs', exist_ok=True)
+        
+    def log_step(self, episode, epoch, states, actions, rewards, cloud_remaining):
+        """Log training data for one step"""
+        log_entry = {
+            'episode': episode,
+            'epoch': epoch,
+            'cloud_remaining_units': cloud_remaining
+        }
+        
+        # Log data for each agent
+        for i in range(self.num_agents):
+            # Log states
+            log_entry.update({
+                f'agent{i}_comp_units': states[i]['available_computation_units'],
+                f'agent{i}_channel_quality': states[i]['channel_quality'],
+                f'agent{i}_remain_epochs': states[i]['remain_epochs'],
+                f'agent{i}_power': states[i]['power'],
+                f'agent{i}_action': actions[i],
+                f'agent{i}_reward': rewards[i]
+            })
+            
+            # Log MEC computation units
+            for j, comp_unit in enumerate(states[i]['mec_comp_units']):
+                log_entry[f'agent{i}_mec_comp_unit_{j}'] = comp_unit
+        
+        self.data.append(log_entry)
+    
+    def save_to_csv(self):
+        """Save logged data to CSV file"""
+        df = pd.DataFrame(self.data)
+        
+        # Create filename with timestamp, scheme name, and number of nodes
+        filename = f'logs/training_log_{self.scheme_name}_n{self.num_agents}_{self.timestamp}.csv'
+        
+        # Save to CSV
+        df.to_csv(filename, index=False)
+        print(f"Training log saved to {filename}")
+        
+        # Clear data after saving
+        self.data = []
+        
+        return filename
+    
 def flatten_dict_values(dict):
         flattened = np.array([])
         for v in list(dict.values()):

@@ -36,9 +36,9 @@ def main():
     state_dim = len(flatten_dict_values(env.observation_space.sample()))
     action_dim = env.action_space.n
     hidden_dim = 16
-    episodes = 1000
+    episodes = 100
     learning_rate = 0.001
-    sync_interval = 100
+    sync_interval = 10
 
     # Federated Agents Training
     averaging_schemes = ['fedavg', 'fedprox', 'fedadam', 'fedcustom']
