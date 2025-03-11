@@ -10,28 +10,59 @@ import time
 from typing import List, Tuple
 import pandas as pd
 from datetime import datetime
+from torchinfo import summary
 
-def run_convergence_experiment(
+def measure_time(func):
+    """
+    Decorator to measure the execution time of a function.
+    """
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        print(f"Execution time of {func.__name__}: {end_time - start_time:.2f} seconds")
+        return result
+    return wrapper
+
+def measure_flops(state_dim: int, action_dim: int, hidden_dim: int) -> None:
+    """
+    Measure the number of FLOPs for a given network.
+    """
+    model = LocalNetwork(state_dim, action_dim, hidden_dim).to(device)
+    flops_info = summary(model, input_size=(1, state_dim), device=device, verbose=0)
+    # print(f"FLOPs: {flops_info.mac}")
+    print("\nModel FLOPs Analysis:")
+    print(flops_info)
+
+def shuffle_channel_patterns(patterns) -> List[str]:
+    """
+    Shuffle the channel patterns of the environments.
+    """
+    np.random.shuffle(patterns)
+    return patterns
+
+def run_experiment(
     n_trials: int = 5,
     n_agents: int = 5,
     n_episodes: int = 200,
     sync_interval: int = 10,
     learning_rate: float = 0.001,
-    hidden_dim: int = 16
-) -> Tuple[List[np.ndarray], List[np.ndarray]]:
+    hidden_dim: int = 16,
+    averaging_scheme: str = 'fedavg'
+) -> List[np.ndarray]:
     """
-    Run multiple trials comparing individual and federated learning convergence.
+    Run multiple trials of the convergence comparison experiment.
     
     Returns:
-        Tuple containing lists of rewards for individual and federated learning trials
+        List of rewards for learning trial
     """
-    individual_rewards = []
-    federated_rewards = []
     
+    rewards_arr = []
     # Environment setup parameters
     max_available_computation_units = [10]*1 + [50]*2 + [100]*2
     agent_velocities = [10]*1 + [20]*2 + [30]*2
     channel_patterns = ['urban']*1 + ['suburban']*2 + ['rural']*2
+    channel_pattern_change_interval = 100
 
     for trial in range(n_trials):
         print(f"\nTrial {trial + 1}/{n_trials}")
@@ -45,6 +76,7 @@ def run_convergence_experiment(
             max_power=10,
             agent_velocity=agent_velocities[i],
             channel_pattern=channel_patterns[i],
+            channel_pattern_change_interval=channel_pattern_change_interval,
             cloud_controller=cloud_controller
         ) for i in range(n_agents)]
 
@@ -52,46 +84,31 @@ def run_convergence_experiment(
         env = envs[0]
         state_dim = len(flatten_dict_values(env.observation_space.sample()))
         action_dim = env.action_space.n
+        
+        # Measure FLOPs for network
+        if trial == 0:
+            measure_flops(state_dim, action_dim, hidden_dim)
 
-        # Individual Learning
-        print("Running Individual Learning...")
-        agents_sin = [LocalNetwork(state_dim, action_dim, hidden_dim).to(device) 
+        # Learning
+        print("Running Learning...")
+        agents = [LocalNetwork(state_dim, action_dim, hidden_dim).to(device) 
                      for _ in range(n_agents)]
-        optimizers_sin = [torch.optim.Adam(agent.parameters(), lr=learning_rate) 
-                         for agent in agents_sin]
-        rewards_sin = train_federated_agents(
+        optimizers = [torch.optim.Adam(agent.parameters(), lr=learning_rate) 
+                         for agent in agents]
+        rewards = train_federated_agents(
             envs=envs,
-            agents=agents_sin,
-            optimizers=optimizers_sin,
-            device=device,
-            episodes=n_episodes,
-            sync_interval=n_episodes,
-            hidden_dim=hidden_dim,
-            averaging_scheme='fedavg',
-            cloud_controller=cloud_controller,
-        )
-        individual_rewards.append(np.mean(rewards_sin, axis=0))
-
-        # Federated Learning
-        print("Running Federated Learning...")
-        agents_fed = [LocalNetwork(state_dim, action_dim, hidden_dim).to(device) 
-                     for _ in range(n_agents)]
-        optimizers_fed = [torch.optim.Adam(agent.parameters(), lr=learning_rate) 
-                         for agent in agents_fed]
-        rewards_fed = train_federated_agents(
-            envs=envs,
-            agents=agents_fed,
-            optimizers=optimizers_fed,
+            agents=agents,
+            optimizers=optimizers,
             device=device,
             episodes=n_episodes,
             sync_interval=sync_interval,
             hidden_dim=hidden_dim,
-            averaging_scheme='fedavg',
+            averaging_scheme=averaging_scheme,
             cloud_controller=cloud_controller,
         )
-        federated_rewards.append(np.mean(rewards_fed, axis=0))
+        rewards_arr.append(np.mean(rewards, axis=0))
 
-    return individual_rewards, federated_rewards
+    return rewards_arr
 
 def plot_convergence_comparison(
     individual_rewards: List[np.ndarray],
@@ -194,11 +211,25 @@ def main():
     print("Starting convergence comparison experiment...")
     start_time = time.time()
     
-    individual_rewards, federated_rewards = run_convergence_experiment(
-        n_trials=5,
-        n_agents=5,
-        n_episodes=200,
-        sync_interval=10
+    # Param settings
+    n_trials = 5
+    n_agents = 5
+    n_episodes = 300
+    sync_interval = 10
+    
+    individual_rewards = run_experiment(
+        n_trials=n_trials,
+        n_agents=n_agents,
+        n_episodes=n_episodes,
+        sync_interval=n_episodes
+    )
+    
+    federated_rewards = run_experiment(
+        n_trials=n_trials,
+        n_agents=n_agents,
+        n_episodes=n_episodes,
+        sync_interval=sync_interval,
+        averaging_scheme = 'fedadam'
     )
     
     # Plot results

@@ -7,7 +7,7 @@ import pandas as pd
 from datetime import datetime
 import time
 from scipy import stats
-from main_conv_compare import run_convergence_experiment
+from main_conv_compare import run_experiment
 
 class LearningComparison:
     def __init__(self, individual_data: List[np.ndarray], federated_data: List[np.ndarray]):
@@ -218,7 +218,7 @@ class LearningComparison:
 
 def main():
     # Example usage with your existing experiment data
-    individual_rewards, federated_rewards = run_convergence_experiment(
+    individual_rewards, federated_rewards = run_experiment(
         n_trials=5,
         n_agents=5,
         n_episodes=1000,

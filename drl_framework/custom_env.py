@@ -18,6 +18,7 @@ class CustomEnv(gym.Env):
                  reward_weights=1,
                  agent_velocity=None,
                  channel_pattern=None,
+                 channel_pattern_change_interval=10,
                  cloud_controller=None,
                  ):
         super().__init__()
@@ -29,11 +30,13 @@ class CustomEnv(gym.Env):
         self.reward_weight = reward_weights
         self.agent_velocity = agent_velocity if agent_velocity else 10
         self.channel_pattern = channel_pattern
+        self.channel_pattern_change_interval = channel_pattern_change_interval
         self.max_available_computation_units = max_available_computation_units
         self.max_channel_quality = 2
         self.max_remain_epochs = max_epoch_size
         self.max_proc_times = int(np.ceil(max_epoch_size/2))
-
+        self.energy_weight = 0.2
+        
         # Cloud controller reference
         self.cloud_controller = cloud_controller
         
@@ -83,6 +86,10 @@ class CustomEnv(gym.Env):
             return 1
         else:
             return 0
+    
+    def change_channel_pattern(self):
+        new_pattern = self.rng.choice(['urban', 'suburban', 'rural'])
+        return new_pattern
     
     def change_channel_quality(self):
         if self.channel_pattern == 'urban':
@@ -161,18 +168,21 @@ class CustomEnv(gym.Env):
                             (self.remaining_power >= 0.5))
             if valid_action:
                 self.available_computation_units -= comp_unit_ahead
-                self.reward = comp_unit_ahead
+                power_consumed = 0.5
+                self.reward = comp_unit_ahead - (self.energy_weight * power_consumed)
             else:
                 self.available_computation_units = 0
+                self.reward = -self.energy_weight
             self.remaining_power = np.clip(self.remaining_power - 0.5, 0, self.max_power)
         elif action == 1:   # Offload
             is_enough = self.consume_cloud_resources(comp_unit_ahead)
             valid_action = ((self.available_computation_units >= comp_unit_ahead) and 
                             (self.remaining_power >= 1) and is_enough)
             if ((self.channel_quality == 1) and valid_action):
-                self.reward = (self.reward_weight * comp_unit_ahead)
+                power_consumed = 1
+                self.reward = (self.reward_weight * comp_unit_ahead) - (self.energy_weight * power_consumed)
             elif self.channel_quality == 0:
-                pass
+                self.reward = - self.energy_weight
             self.remaining_power = np.clip(self.remaining_power - 1, 0, self.max_power)
         elif action == 2:   # Discard
             pass
@@ -182,6 +192,10 @@ class CustomEnv(gym.Env):
         # self.queue_comp_units = self.rng.integers(1, self.max_comp_units + 1)
         # self.queue_proc_times = self.rng.integers(1, self.max_proc_times + 1)
             
+        # Channel channel pattern
+        if self.remain_epochs % self.channel_pattern_change_interval == 0:
+            self.channel_pattern = self.change_channel_pattern()
+        
         self.channel_quality = self.change_channel_quality()
         self.remain_epochs = self.remain_epochs - 1
 

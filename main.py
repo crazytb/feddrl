@@ -6,6 +6,7 @@ from drl_framework.utils import *
 from drl_framework.custom_env import *
 from drl_framework.params import device
 import numpy as np
+from torchinfo import summary
 from torch.utils.tensorboard import SummaryWriter
 
 def main():
