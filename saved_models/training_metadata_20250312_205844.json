@@ -1,0 +1,78 @@
+{
+    "sync_intervals": [
+        1,
+        5,
+        10,
+        20,
+        50
+    ],
+    "n_trials": 2,
+    "n_agents": 5,
+    "n_episodes": 20,
+    "learning_rate": 0.001,
+    "hidden_dim": 16,
+    "averaging_scheme": "fedavg",
+    "model_paths": {
+        "1": [
+            "saved_models/agent_0_sync_1_trial_0_20250312_205844.pt",
+            "saved_models/agent_1_sync_1_trial_0_20250312_205844.pt",
+            "saved_models/agent_2_sync_1_trial_0_20250312_205844.pt",
+            "saved_models/agent_3_sync_1_trial_0_20250312_205844.pt",
+            "saved_models/agent_4_sync_1_trial_0_20250312_205844.pt",
+            "saved_models/agent_0_sync_1_trial_1_20250312_205844.pt",
+            "saved_models/agent_1_sync_1_trial_1_20250312_205844.pt",
+            "saved_models/agent_2_sync_1_trial_1_20250312_205844.pt",
+            "saved_models/agent_3_sync_1_trial_1_20250312_205844.pt",
+            "saved_models/agent_4_sync_1_trial_1_20250312_205844.pt"
+        ],
+        "5": [
+            "saved_models/agent_0_sync_5_trial_0_20250312_205844.pt",
+            "saved_models/agent_1_sync_5_trial_0_20250312_205844.pt",
+            "saved_models/agent_2_sync_5_trial_0_20250312_205844.pt",
+            "saved_models/agent_3_sync_5_trial_0_20250312_205844.pt",
+            "saved_models/agent_4_sync_5_trial_0_20250312_205844.pt",
+            "saved_models/agent_0_sync_5_trial_1_20250312_205844.pt",
+            "saved_models/agent_1_sync_5_trial_1_20250312_205844.pt",
+            "saved_models/agent_2_sync_5_trial_1_20250312_205844.pt",
+            "saved_models/agent_3_sync_5_trial_1_20250312_205844.pt",
+            "saved_models/agent_4_sync_5_trial_1_20250312_205844.pt"
+        ],
+        "10": [
+            "saved_models/agent_0_sync_10_trial_0_20250312_205844.pt",
+            "saved_models/agent_1_sync_10_trial_0_20250312_205844.pt",
+            "saved_models/agent_2_sync_10_trial_0_20250312_205844.pt",
+            "saved_models/agent_3_sync_10_trial_0_20250312_205844.pt",
+            "saved_models/agent_4_sync_10_trial_0_20250312_205844.pt",
+            "saved_models/agent_0_sync_10_trial_1_20250312_205844.pt",
+            "saved_models/agent_1_sync_10_trial_1_20250312_205844.pt",
+            "saved_models/agent_2_sync_10_trial_1_20250312_205844.pt",
+            "saved_models/agent_3_sync_10_trial_1_20250312_205844.pt",
+            "saved_models/agent_4_sync_10_trial_1_20250312_205844.pt"
+        ],
+        "20": [
+            "saved_models/agent_0_sync_20_trial_0_20250312_205844.pt",
+            "saved_models/agent_1_sync_20_trial_0_20250312_205844.pt",
+            "saved_models/agent_2_sync_20_trial_0_20250312_205844.pt",
+            "saved_models/agent_3_sync_20_trial_0_20250312_205844.pt",
+            "saved_models/agent_4_sync_20_trial_0_20250312_205844.pt",
+            "saved_models/agent_0_sync_20_trial_1_20250312_205844.pt",
+            "saved_models/agent_1_sync_20_trial_1_20250312_205844.pt",
+            "saved_models/agent_2_sync_20_trial_1_20250312_205844.pt",
+            "saved_models/agent_3_sync_20_trial_1_20250312_205844.pt",
+            "saved_models/agent_4_sync_20_trial_1_20250312_205844.pt"
+        ],
+        "50": [
+            "saved_models/agent_0_sync_50_trial_0_20250312_205844.pt",
+            "saved_models/agent_1_sync_50_trial_0_20250312_205844.pt",
+            "saved_models/agent_2_sync_50_trial_0_20250312_205844.pt",
+            "saved_models/agent_3_sync_50_trial_0_20250312_205844.pt",
+            "saved_models/agent_4_sync_50_trial_0_20250312_205844.pt",
+            "saved_models/agent_0_sync_50_trial_1_20250312_205844.pt",
+            "saved_models/agent_1_sync_50_trial_1_20250312_205844.pt",
+            "saved_models/agent_2_sync_50_trial_1_20250312_205844.pt",
+            "saved_models/agent_3_sync_50_trial_1_20250312_205844.pt",
+            "saved_models/agent_4_sync_50_trial_1_20250312_205844.pt"
+        ]
+    },
+    "timestamp": "20250312_205844"
+}

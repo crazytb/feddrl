@@ -1,0 +1,6 @@
+sync_interval,final_performance,episodes_to_convergence,convergence_std
+1,28.945,0.0,0.0
+5,30.059999999999995,0.0,0.0
+10,27.705,0.5,0.5
+20,27.82,0.0,0.0
+50,34.28,0.5,0.5
