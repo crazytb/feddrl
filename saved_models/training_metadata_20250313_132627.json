@@ -1,0 +1,47 @@
+{
+    "n_agents": 5,
+    "n_episodes": 300,
+    "sync_interval": 20,
+    "learning_rate": 0.001,
+    "hidden_dim": 16,
+    "model_paths": {
+        "individual_agent_0": "saved_models/individual_agent_0_20250313_132627.pt",
+        "individual_agent_1": "saved_models/individual_agent_1_20250313_132627.pt",
+        "individual_agent_2": "saved_models/individual_agent_2_20250313_132627.pt",
+        "individual_agent_3": "saved_models/individual_agent_3_20250313_132627.pt",
+        "individual_agent_4": "saved_models/individual_agent_4_20250313_132627.pt",
+        "federated_agent_0": "saved_models/federated_agent_0_20250313_132627.pt",
+        "federated_agent_1": "saved_models/federated_agent_1_20250313_132627.pt",
+        "federated_agent_2": "saved_models/federated_agent_2_20250313_132627.pt",
+        "federated_agent_3": "saved_models/federated_agent_3_20250313_132627.pt",
+        "federated_agent_4": "saved_models/federated_agent_4_20250313_132627.pt"
+    },
+    "individual_training_time": 56.94772291183472,
+    "federated_training_time": 56.262879848480225,
+    "timestamp": "20250313_132627",
+    "training_environment": {
+        "max_comp_units": 10,
+        "max_available_computation_units": [
+            10,
+            50,
+            50,
+            100,
+            100
+        ],
+        "agent_velocities": [
+            10,
+            20,
+            20,
+            30,
+            30
+        ],
+        "channel_patterns": [
+            "urban",
+            "suburban",
+            "suburban",
+            "rural",
+            "rural"
+        ],
+        "channel_pattern_change_interval": 100
+    }
+}
