@@ -1,7 +1,7 @@
 import gymnasium as gym
 import torch
 from drl_framework.networks import SharedMLP, LocalHead
-from drl_framework.trainer import train_personalized_federated_agents
+from drl_framework.trainer import train_personalized_federated_agents, train_individual_agents
 from drl_framework.utils import *
 from drl_framework.custom_env import *
 from drl_framework.params import device
@@ -63,9 +63,9 @@ def main():
     # Shared writer for logging
     writer = SummaryWriter(log_dir="outputs/personalized_federated")
 
-    # Training
+    # Training (Personalized Federated Learning)
     print("\n[Personalized Federated Learning]")
-    avg_reward = train_personalized_federated_agents(
+    avg_reward_fed = train_personalized_federated_agents(
         envs_provider=envs_provider,
         shared_layers=shared_layers,
         local_heads=local_heads,
@@ -76,7 +76,27 @@ def main():
         writer=writer
     )
 
-    print(f"\nAverage reward over {episodes} episodes: {avg_reward:.2f}")
+    # Individual Learning (re-initialize)
+    print("\n[Individual Learning - No Communication]")
+    shared_layers_ind = [SharedMLP(state_dim, hidden_dim).to(device) for _ in range(n_agents)]
+    local_heads_ind = [LocalHead(hidden_dim, action_dim).to(device) for _ in range(n_agents)]
+    optimizers_ind = [torch.optim.Adam(
+        list(shared_layers_ind[i].parameters()) + list(local_heads_ind[i].parameters()),
+        lr=learning_rate) for i in range(n_agents)]
+    writer_ind = SummaryWriter(log_dir="outputs/individual_learning")
+
+    avg_reward_ind = train_individual_agents(
+        envs_provider=envs_provider,
+        shared_layers=shared_layers_ind,
+        local_heads=local_heads_ind,
+        optimizers=optimizers_ind,
+        device=device,
+        episodes=episodes,
+        writer=writer_ind
+    )
+
+    print(f"\nAverage reward (Federated): {avg_reward_fed:.2f}")
+    print(f"Average reward (Individual): {avg_reward_ind:.2f}")
 
 if __name__ == "__main__":
     main()
