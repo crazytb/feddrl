@@ -51,7 +51,6 @@ class ReplayBuffer:
     def __len__(self):
         return self.size
 
-@measure_time
 def train_single_agent(
     env: gym.Env,
     agent: torch.nn.Module,
@@ -166,7 +165,6 @@ def train_single_agent(
         
     return episode_rewards
 
-@measure_time
 def train_federated_agents(
     envs: List[gym.Env],
     agents: List[torch.nn.Module],
