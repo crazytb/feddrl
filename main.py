@@ -1,7 +1,7 @@
 import gymnasium as gym
 import torch
-from drl_framework.networks import LocalNetwork
-from drl_framework.trainer import train_single_agent, train_federated_agents
+from drl_framework.networks import SharedMLP, LocalHead
+from drl_framework.trainer import train_single_agent, train_federated_agents, train_personalized_federated_agents
 from drl_framework.utils import *
 from drl_framework.custom_env import *
 from drl_framework.params import device
@@ -9,6 +9,18 @@ import numpy as np
 from torchinfo import summary
 from torch.utils.tensorboard import SummaryWriter
 import matplotlib.pyplot as plt
+
+
+def make_envs(comp, vel, chan, cloud):
+    return [CustomEnv(
+                max_comp_units=10,
+                max_available_computation_units=comp[i],
+                max_epoch_size=10,
+                max_power=10,
+                agent_velocity=vel[i],
+                channel_pattern=chan[i],
+                cloud_controller=cloud
+            ) for i in range(len(comp))]
 
 def main():
     print(f"Device: {device}")
@@ -62,7 +74,10 @@ def main():
     rewards = {}
     # averaging_schemes = ['fedcustom']
     for scheme in averaging_schemes:
-        agents = [LocalNetwork(state_dim, action_dim, hidden_dim).to(device) for _ in range(n_agents)]
+        # agents = [LocalNetwork(state_dim, action_dim, hidden_dim).to(device) for _ in range(n_agents)]
+        shared_layers = [SharedMLP(state_dim, hidden_dim).to(device) for _ in range(n_agents)]
+        local_heads = [LocalHead(hidden_dim, action_dim).to(device) for _ in range(n_agents)]
+        agents = [torch.nn.Sequential(shared_layers[i], local_heads[i]) for i in range(n_agents)]
         optimizers = [torch.optim.Adam(agent.parameters(), lr=learning_rate) for agent in agents]
         rewards[scheme] = train_federated_agents(
             envs=envs,

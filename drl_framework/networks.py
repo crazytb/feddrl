@@ -32,6 +32,17 @@ class SharedMLP(nn.Module):
         for p, new_p in zip(self.parameters(), new_params):
             p.data.copy_(new_p)
 
+
+class LocalHead(nn.Module):
+    """Local head for agent-specific parameters"""
+    def __init__(self, input_dim: int, output_dim: int):
+        super().__init__()
+        self.output = nn.Linear(input_dim, output_dim).to(device)
+    
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.output(x.to(device))
+        
+
 class LocalNetwork(nn.Module):
     """Q-Network with shared MLP for DQN"""
     def __init__(self, state_dim: int, action_dim: int, hidden_dim: int):
