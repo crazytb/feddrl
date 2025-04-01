@@ -41,6 +41,21 @@ def main():
     learning_rate = 0.001
     sync_interval = 10
 
+    # Individual Agent Training
+    agents_ind = [LocalNetwork(state_dim, action_dim, hidden_dim).to(device) for _ in range(n_agents)]
+    optimizers_ind = [torch.optim.Adam(agent.parameters(), lr=learning_rate) for agent in agents_ind]
+    rewards_ind = train_federated_agents(
+        envs=envs,
+        agents=agents_ind,
+        optimizers=optimizers_ind,
+        device=device,
+        episodes=episodes,
+        sync_interval=episodes,
+        hidden_dim=hidden_dim,
+        averaging_scheme='individual',
+        cloud_controller=cloud_controller
+    )
+    
     # Federated Agents Training
     averaging_schemes = ['fedavg', 'fedprox', 'fedadam', 'fedcustom']
     # averaging_schemes = ['fedcustom']

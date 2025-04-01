@@ -242,6 +242,15 @@ def fedcustom_shared_mlp(agent_networks):
             
             # Update agent parameters
             agent.mlp.set_parameters(averaged_params)
+            
+def individual_shared_mlp(agent_networks):
+    """
+    No federation - each agent keeps its own parameters.
+    This function is a no-op placeholder that does nothing,
+    allowing each agent to train independently.
+    """
+    # No parameter sharing or averaging
+    pass
 
 # Add custom scheme to the averaging schemes dictionary
 def get_averaging_scheme(scheme_name: str):
@@ -251,6 +260,7 @@ def get_averaging_scheme(scheme_name: str):
         'fedprox': fedprox_shared_mlp,
         'fedadam': fedadam_shared_mlp,
         'weighted': weighted_shared_mlp,
-        'fedcustom': fedcustom_shared_mlp
+        'fedcustom': fedcustom_shared_mlp,
+        'individual': individual_shared_mlp,
     }
     return schemes.get(scheme_name, fedavg_shared_mlp)

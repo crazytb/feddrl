@@ -11,6 +11,11 @@ from torch.utils.tensorboard import SummaryWriter
 output_path = 'outputs'
 if not os.path.exists(output_path):
     os.makedirs(output_path)
+
+# Create models directory
+models_dir = 'models'
+if not os.path.exists(models_dir):
+    os.makedirs(models_dir)
     
 seed = 42
         
@@ -162,6 +167,11 @@ def train_single_agent(
         
         # Log to TensorBoard
         writer.add_scalar('Reward', episode_reward, episode)
+    
+    # Save the trained agent
+    model_path = os.path.join(models_dir, "single_agent.pth")
+    torch.save(agent.state_dict(), model_path)
+    print(f"Saved single agent model to {model_path}")
         
     return episode_rewards
 
@@ -296,6 +306,12 @@ def train_federated_agents(
         writer.add_scalar('Average_Reward', avg_reward, episode)
         for i in range(len(agents)):
             writer.add_scalar(f'Agent_{i}_Reward', episode_rewards[i, episode], episode)
+    
+    # Save all trained agents after completing all episodes
+    for i, agent in enumerate(agents):
+        model_path = os.path.join(models_dir, f'{averaging_scheme.__name__}_agent_{i}.pth')
+        torch.save(agent.state_dict(), model_path)
+        print(f"Saved model to {model_path}")
     
     # Save logged data
     logger.save_to_csv()
