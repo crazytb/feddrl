@@ -8,6 +8,7 @@ from drl_framework.params import device
 import numpy as np
 from torchinfo import summary
 from torch.utils.tensorboard import SummaryWriter
+import matplotlib.pyplot as plt
 
 def main():
     print(f"Device: {device}")
@@ -37,35 +38,36 @@ def main():
     state_dim = len(flatten_dict_values(env.observation_space.sample()))
     action_dim = env.action_space.n
     hidden_dim = 16
-    episodes = 100
+    episodes = 500
     learning_rate = 0.001
-    sync_interval = 10
+    sync_interval = 100
 
-    # Individual Agent Training
-    agents_ind = [LocalNetwork(state_dim, action_dim, hidden_dim).to(device) for _ in range(n_agents)]
-    optimizers_ind = [torch.optim.Adam(agent.parameters(), lr=learning_rate) for agent in agents_ind]
-    rewards_ind = train_federated_agents(
-        envs=envs,
-        agents=agents_ind,
-        optimizers=optimizers_ind,
-        device=device,
-        episodes=episodes,
-        sync_interval=episodes,
-        hidden_dim=hidden_dim,
-        averaging_scheme='individual',
-        cloud_controller=cloud_controller
-    )
+    # # Individual Agent Training
+    # agents_ind = [LocalNetwork(state_dim, action_dim, hidden_dim).to(device) for _ in range(n_agents)]
+    # optimizers_ind = [torch.optim.Adam(agent.parameters(), lr=learning_rate) for agent in agents_ind]
+    # rewards_ind = train_federated_agents(
+    #     envs=envs,
+    #     agents=agents_ind,
+    #     optimizers=optimizers_ind,
+    #     device=device,
+    #     episodes=episodes,
+    #     sync_interval=episodes,
+    #     hidden_dim=hidden_dim,
+    #     averaging_scheme='individual',
+    #     cloud_controller=cloud_controller
+    # )
     
-    # Federated Agents Training
-    averaging_schemes = ['fedavg', 'fedprox', 'fedadam', 'fedcustom']
+    # Individual and Federated Agents Training
+    averaging_schemes = ['individual', 'fedavg', 'fedprox', 'fedadam', 'fedcustom']
+    rewards = {}
     # averaging_schemes = ['fedcustom']
     for scheme in averaging_schemes:
-        agents_fed = [LocalNetwork(state_dim, action_dim, hidden_dim).to(device) for _ in range(n_agents)]
-        optimizers_fed = [torch.optim.Adam(agent.parameters(), lr=learning_rate) for agent in agents_fed]
-        rewards_fed = train_federated_agents(
+        agents = [LocalNetwork(state_dim, action_dim, hidden_dim).to(device) for _ in range(n_agents)]
+        optimizers = [torch.optim.Adam(agent.parameters(), lr=learning_rate) for agent in agents]
+        rewards[scheme] = train_federated_agents(
             envs=envs,
-            agents=agents_fed,
-            optimizers=optimizers_fed,
+            agents=agents,
+            optimizers=optimizers,
             device=device,
             episodes=episodes,
             sync_interval=sync_interval,
@@ -73,7 +75,7 @@ def main():
             averaging_scheme=scheme,
             cloud_controller=cloud_controller
         )
-        
+    
     print("Training Complete")
 
 if __name__ == "__main__":
