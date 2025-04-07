@@ -4,43 +4,82 @@ import torch.nn.functional as F
 import numpy as np
 from .params import device
 
+# class SharedMLP(nn.Module):
+#     """Shared MLP layers for federated learning"""
+#     def __init__(self, input_dim: int, hidden_dim: int):
+#         super().__init__()
+#         self.fc1 = nn.Linear(input_dim, hidden_dim).to(device)
+#         self.fc2 = nn.Linear(hidden_dim, hidden_dim).to(device)
+#         # For FedProx
+#         self.global_params = None
+#         # For FedAdam
+#         self.m = None
+#         self.v = None
+#         self.t = 0
+    
+#     def forward(self, x: torch.Tensor) -> torch.Tensor:
+#         x = x.to(device)
+#         x = F.relu(self.fc1(x))
+#         x = F.relu(self.fc2(x))
+#         return x
+
+#     def get_parameters(self):
+#         """Get parameters for federation"""
+#         return [p.data.clone() for p in self.parameters()]
+    
+#     def set_parameters(self, new_params):
+#         """Set parameters after federation"""
+#         for p, new_p in zip(self.parameters(), new_params):
+#             p.data.copy_(new_p)
+
+
+# class LocalHead(nn.Module):
+#     """Local head for agent-specific parameters"""
+#     def __init__(self, input_dim: int, output_dim: int):
+#         super().__init__()
+#         self.output = nn.Linear(input_dim, output_dim).to(device)
+    
+#     def forward(self, x: torch.Tensor) -> torch.Tensor:
+#         return self.output(x.to(device))
+
 class SharedMLP(nn.Module):
-    """Shared MLP layers for federated learning"""
-    def __init__(self, input_dim: int, hidden_dim: int):
-        super().__init__()
-        self.fc1 = nn.Linear(input_dim, hidden_dim).to(device)
-        self.fc2 = nn.Linear(hidden_dim, hidden_dim).to(device)
-        # For FedProx
-        self.global_params = None
-        # For FedAdam
-        self.m = None
-        self.v = None
-        self.t = 0
-    
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = x.to(device)
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        return x
+    def __init__(self, input_dim, hidden_dim):
+        super(SharedMLP, self).__init__()
+        self.net = nn.Sequential(
+            nn.Linear(input_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU()
+        )
 
-    def get_parameters(self):
-        """Get parameters for federation"""
-        return [p.data.clone() for p in self.parameters()]
-    
-    def set_parameters(self, new_params):
-        """Set parameters after federation"""
-        for p, new_p in zip(self.parameters(), new_params):
-            p.data.copy_(new_p)
+    def forward(self, x):
+        return self.net(x)
 
+class PolicyHead(nn.Module):
+    def __init__(self, hidden_dim, output_dim):
+        super(PolicyHead, self).__init__()
+        self.net = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, output_dim)
+        )
 
-class LocalHead(nn.Module):
-    """Local head for agent-specific parameters"""
-    def __init__(self, input_dim: int, output_dim: int):
-        super().__init__()
-        self.output = nn.Linear(input_dim, output_dim).to(device)
-    
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.output(x.to(device))
+    def forward(self, x):
+        return F.softmax(self.net(x), dim=-1)
+
+class ValueHead(nn.Module):
+    def __init__(self, hidden_dim, output_dim=1):
+        super(ValueHead, self).__init__()
+        self.net = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, output_dim)
+        )
+
+    def forward(self, x):
+        return self.net(x).squeeze(-1)  # [batch] instead of [batch, 1]
         
 
 class LocalNetwork(nn.Module):

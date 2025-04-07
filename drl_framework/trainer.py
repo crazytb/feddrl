@@ -2,10 +2,12 @@ import torch
 from typing import List, Callable
 import gymnasium as gym
 from .utils import *
-from .networks import SharedMLP, LocalHead
+from .networks import SharedMLP, PolicyHead, ValueHead
 import numpy as np
 import os
 from torch.utils.tensorboard import SummaryWriter
+import torch.nn as nn
+import torch.nn.functional as F
 
 # SummaryWriter for TensorBoard
 output_path = 'outputs'
@@ -380,77 +382,78 @@ def plot_rewards(episode_rewards, filename="outputs/reward_plot.png"):
 
 def train_personalized_federated_agents(
     envs_provider: Callable[[int], List[gym.Env]],
-    shared_layers: List[SharedMLP],
-    local_heads: List[LocalHead],
+    shared_layers: List[nn.Module],
+    policy_heads: List[nn.Module],
+    value_heads: List[nn.Module],
     optimizers: List[torch.optim.Optimizer],
     device: torch.device,
     episodes: int = 500,
     sync_interval: int = 10,
     gamma: float = 0.99,
-    epsilon_start: float = 1.0,
-    epsilon_end: float = 0.01,
-    epsilon_decay: float = 0.995,
-    target_update: int = 10,
-    batch_size: int = 32,
-    buffer_size: int = 100000,
-    min_samples: int = 1000,
     writer=None
 ) -> float:
     n_agents = len(shared_layers)
-    state_dim = shared_layers[0].fc1.in_features
-    epsilon = epsilon_start
     episode_rewards = np.zeros((n_agents, episodes))
-    buffers = [ReplayBuffer(state_dim, buffer_size, batch_size) for _ in range(n_agents)]
+
+    def compute_discounted_rewards(rewards, gamma):
+        discounted = []
+        R = 0
+        for r in reversed(rewards):
+            R = r + gamma * R
+            discounted.insert(0, R)
+        return torch.tensor(discounted, dtype=torch.float32)
 
     for episode in range(episodes):
+        print(f"Episode {episode + 1}/{episodes}")
         envs = envs_provider(episode)
-        states = [flatten_dict_values(env.reset(seed=seed)[0]) for env in envs]
+        states = [flatten_dict_values(env.reset(seed=episode)[0]) for env in envs]
         done_flags = [False] * n_agents
         total_rewards = [0.0] * n_agents
+
+        agent_log_probs = [[] for _ in range(n_agents)]
+        agent_values = [[] for _ in range(n_agents)]
+        agent_rewards = [[] for _ in range(n_agents)]
 
         while not all(done_flags):
             actions = []
             for i in range(n_agents):
                 state_tensor = torch.tensor(states[i], dtype=torch.float32).unsqueeze(0).to(device)
                 shared_out = shared_layers[i](state_tensor)
-                q_values = local_heads[i](shared_out)
-                if np.random.rand() < epsilon:
-                    action = np.random.randint(q_values.shape[-1])
-                else:
-                    action = torch.argmax(q_values).item()
-                actions.append(action)
+                probs = policy_heads[i](shared_out)
+                dist = torch.distributions.Categorical(probs)
+                action = dist.sample()
+
+                actions.append(action.item())
+                agent_log_probs[i].append(dist.log_prob(action))
+                agent_values[i].append(value_heads[i](shared_out))
 
             next_states, rewards, dones, _, _ = zip(*[envs[i].step(actions[i]) for i in range(n_agents)])
             next_states = [flatten_dict_values(ns) for ns in next_states]
 
             for i in range(n_agents):
-                buffers[i].store(states[i], actions[i], rewards[i], next_states[i], float(dones[i]))
+                agent_rewards[i].append(rewards[i])
                 total_rewards[i] += rewards[i]
                 states[i] = next_states[i]
                 done_flags[i] = dones[i]
 
-        # Update agents
+        # Update agents using Actor-Critic
         for i in range(n_agents):
-            if buffers[i].size < min_samples:
-                continue
-            batch = buffers[i].sample(device)
-            shared_out = shared_layers[i](batch['state'])
-            q_values = local_heads[i](shared_out)
-            current_q = q_values.gather(1, batch['action'].unsqueeze(1)).squeeze(1)
+            returns = compute_discounted_rewards(agent_rewards[i], gamma).to(device)
+            values = torch.cat(agent_values[i]).to(device)
+            log_probs = torch.stack(agent_log_probs[i]).to(device)
 
-            with torch.no_grad():
-                next_shared_out = shared_layers[i](batch['next_state'])
-                next_q = local_heads[i](next_shared_out)
-                target_q = batch['reward'] + gamma * (1 - batch['done']) * next_q.max(1)[0]
+            advantage = returns - values.detach()
 
-            loss = torch.nn.functional.mse_loss(current_q, target_q)
+            policy_loss = -(log_probs * advantage).mean()
+            value_loss = F.mse_loss(values, returns)
+            loss = policy_loss + value_loss
+
             optimizers[i].zero_grad()
             loss.backward()
             optimizers[i].step()
 
-        if writer:
-            for i in range(n_agents):
-                writer.add_scalar(f"agent_{i}/reward", total_rewards[i], episode)
+            if writer:
+                writer.add_scalar(f"agent_{i}/reward_personalized", total_rewards[i], episode)
 
         # Federated averaging for shared layers
         if (episode + 1) % sync_interval == 0:
@@ -459,88 +462,256 @@ def train_personalized_federated_agents(
                 for p, avg in zip(layer.parameters(), avg_params):
                     p.data.copy_(avg)
 
-        epsilon = max(epsilon_end, epsilon * epsilon_decay)
         for i in range(n_agents):
             episode_rewards[i, episode] = total_rewards[i]
 
-    plot_rewards(episode_rewards)
+    plot_rewards(episode_rewards, filename="outputs/reward_plot_personalized.png")
     return np.mean(episode_rewards)
+
+# def train_personalized_federated_agents(
+#     envs_provider: Callable[[int], List[gym.Env]],
+#     shared_layers: List[SharedMLP],
+#     local_heads: List[LocalHead],
+#     optimizers: List[torch.optim.Optimizer],
+#     device: torch.device,
+#     episodes: int = 500,
+#     sync_interval: int = 10,
+#     gamma: float = 0.99,
+#     epsilon_start: float = 1.0,
+#     epsilon_end: float = 0.01,
+#     epsilon_decay: float = 0.995,
+#     target_update: int = 10,
+#     batch_size: int = 32,
+#     buffer_size: int = 100000,
+#     min_samples: int = 1000,
+#     writer=None
+# ) -> float:
+#     n_agents = len(shared_layers)
+#     state_dim = shared_layers[0].fc1.in_features
+#     epsilon = epsilon_start
+#     episode_rewards = np.zeros((n_agents, episodes))
+#     buffers = [ReplayBuffer(state_dim, buffer_size, batch_size) for _ in range(n_agents)]
+
+#     for episode in range(episodes):
+#         envs = envs_provider(episode)
+#         states = [flatten_dict_values(env.reset(seed=seed)[0]) for env in envs]
+#         done_flags = [False] * n_agents
+#         total_rewards = [0.0] * n_agents
+
+#         while not all(done_flags):
+#             actions = []
+#             for i in range(n_agents):
+#                 state_tensor = torch.tensor(states[i], dtype=torch.float32).unsqueeze(0).to(device)
+#                 shared_out = shared_layers[i](state_tensor)
+#                 q_values = local_heads[i](shared_out)
+#                 if np.random.rand() < epsilon:
+#                     action = np.random.randint(q_values.shape[-1])
+#                 else:
+#                     action = torch.argmax(q_values).item()
+#                 actions.append(action)
+
+#             next_states, rewards, dones, _, _ = zip(*[envs[i].step(actions[i]) for i in range(n_agents)])
+#             next_states = [flatten_dict_values(ns) for ns in next_states]
+
+#             for i in range(n_agents):
+#                 buffers[i].store(states[i], actions[i], rewards[i], next_states[i], float(dones[i]))
+#                 total_rewards[i] += rewards[i]
+#                 states[i] = next_states[i]
+#                 done_flags[i] = dones[i]
+
+#         # Update agents
+#         for i in range(n_agents):
+#             if buffers[i].size < min_samples:
+#                 continue
+#             batch = buffers[i].sample(device)
+#             shared_out = shared_layers[i](batch['state'])
+#             q_values = local_heads[i](shared_out)
+#             current_q = q_values.gather(1, batch['action'].unsqueeze(1)).squeeze(1)
+
+#             with torch.no_grad():
+#                 next_shared_out = shared_layers[i](batch['next_state'])
+#                 next_q = local_heads[i](next_shared_out)
+#                 target_q = batch['reward'] + gamma * (1 - batch['done']) * next_q.max(1)[0]
+
+#             loss = torch.nn.functional.mse_loss(current_q, target_q)
+#             optimizers[i].zero_grad()
+#             loss.backward()
+#             optimizers[i].step()
+
+#         if writer:
+#             for i in range(n_agents):
+#                 writer.add_scalar(f"agent_{i}/reward", total_rewards[i], episode)
+
+#         # Federated averaging for shared layers
+#         if (episode + 1) % sync_interval == 0:
+#             avg_params = average_shared_parameters(shared_layers)
+#             for layer in shared_layers:
+#                 for p, avg in zip(layer.parameters(), avg_params):
+#                     p.data.copy_(avg)
+
+#         epsilon = max(epsilon_end, epsilon * epsilon_decay)
+#         for i in range(n_agents):
+#             episode_rewards[i, episode] = total_rewards[i]
+
+#     plot_rewards(episode_rewards)
+#     return np.mean(episode_rewards)
 
 def train_individual_agents(
     envs_provider: Callable[[int], List[gym.Env]],
-    shared_layers: List[SharedMLP],
-    local_heads: List[LocalHead],
+    shared_layers: List[nn.Module],
+    policy_heads: List[nn.Module],
+    value_heads: List[nn.Module],
     optimizers: List[torch.optim.Optimizer],
     device: torch.device,
     episodes: int = 500,
     gamma: float = 0.99,
-    epsilon_start: float = 1.0,
-    epsilon_end: float = 0.01,
-    epsilon_decay: float = 0.995,
-    batch_size: int = 32,
-    buffer_size: int = 100000,
-    min_samples: int = 1000,
     writer=None
 ) -> float:
     n_agents = len(shared_layers)
-    state_dim = shared_layers[0].fc1.in_features
-    epsilon = epsilon_start
     episode_rewards = np.zeros((n_agents, episodes))
-    buffers = [ReplayBuffer(state_dim, buffer_size, batch_size) for _ in range(n_agents)]
+
+    def compute_discounted_rewards(rewards, gamma):
+        discounted = []
+        R = 0
+        for r in reversed(rewards):
+            R = r + gamma * R
+            discounted.insert(0, R)
+        return torch.tensor(discounted, dtype=torch.float32)
 
     for episode in range(episodes):
+        print(f"Episode {episode + 1}/{episodes}")
         envs = envs_provider(episode)
-        states = [flatten_dict_values(env.reset(seed=seed)[0]) for env in envs]
+        states = [flatten_dict_values(env.reset(seed=episode)[0]) for env in envs]
         done_flags = [False] * n_agents
         total_rewards = [0.0] * n_agents
+
+        agent_log_probs = [[] for _ in range(n_agents)]
+        agent_values = [[] for _ in range(n_agents)]
+        agent_rewards = [[] for _ in range(n_agents)]
 
         while not all(done_flags):
             actions = []
             for i in range(n_agents):
                 state_tensor = torch.tensor(states[i], dtype=torch.float32).unsqueeze(0).to(device)
                 shared_out = shared_layers[i](state_tensor)
-                q_values = local_heads[i](shared_out)
-                if np.random.rand() < epsilon:
-                    action = np.random.randint(q_values.shape[-1])
-                else:
-                    action = torch.argmax(q_values).item()
-                actions.append(action)
+                probs = policy_heads[i](shared_out)
+                dist = torch.distributions.Categorical(probs)
+                action = dist.sample()
+
+                actions.append(action.item())
+                agent_log_probs[i].append(dist.log_prob(action))
+                agent_values[i].append(value_heads[i](shared_out))
 
             next_states, rewards, dones, _, _ = zip(*[envs[i].step(actions[i]) for i in range(n_agents)])
             next_states = [flatten_dict_values(ns) for ns in next_states]
 
             for i in range(n_agents):
-                buffers[i].store(states[i], actions[i], rewards[i], next_states[i], float(dones[i]))
+                agent_rewards[i].append(rewards[i])
                 total_rewards[i] += rewards[i]
                 states[i] = next_states[i]
                 done_flags[i] = dones[i]
 
-        # Update agents independently
+        # Update agents using Actor-Critic
         for i in range(n_agents):
-            if buffers[i].size < min_samples:
-                continue
-            batch = buffers[i].sample(device)
-            shared_out = shared_layers[i](batch['state'])
-            q_values = local_heads[i](shared_out)
-            current_q = q_values.gather(1, batch['action'].unsqueeze(1)).squeeze(1)
+            returns = compute_discounted_rewards(agent_rewards[i], gamma).to(device)
+            values = torch.cat(agent_values[i]).to(device)
+            log_probs = torch.stack(agent_log_probs[i]).to(device)
 
-            with torch.no_grad():
-                next_shared_out = shared_layers[i](batch['next_state'])
-                next_q = local_heads[i](next_shared_out)
-                target_q = batch['reward'] + gamma * (1 - batch['done']) * next_q.max(1)[0]
+            advantage = returns - values.detach()
 
-            loss = torch.nn.functional.mse_loss(current_q, target_q)
+            policy_loss = -(log_probs * advantage).mean()
+            value_loss = F.mse_loss(values, returns)
+            loss = policy_loss + value_loss
+
             optimizers[i].zero_grad()
             loss.backward()
             optimizers[i].step()
 
-        if writer:
-            for i in range(n_agents):
+            if writer:
                 writer.add_scalar(f"agent_{i}/reward_individual", total_rewards[i], episode)
 
-        epsilon = max(epsilon_end, epsilon * epsilon_decay)
         for i in range(n_agents):
             episode_rewards[i, episode] = total_rewards[i]
 
     plot_rewards(episode_rewards, filename="outputs/reward_plot_individual.png")
     return np.mean(episode_rewards)
+
+
+# def train_individual_agents(
+#     envs_provider: Callable[[int], List[gym.Env]],
+#     shared_layers: List[SharedMLP],
+#     local_heads: List[LocalHead],
+#     optimizers: List[torch.optim.Optimizer],
+#     device: torch.device,
+#     episodes: int = 500,
+#     gamma: float = 0.99,
+#     epsilon_start: float = 1.0,
+#     epsilon_end: float = 0.01,
+#     epsilon_decay: float = 0.995,
+#     batch_size: int = 32,
+#     buffer_size: int = 100000,
+#     min_samples: int = 1000,
+#     writer=None
+# ) -> float:
+#     n_agents = len(shared_layers)
+#     state_dim = shared_layers[0].fc1.in_features
+#     epsilon = epsilon_start
+#     episode_rewards = np.zeros((n_agents, episodes))
+#     buffers = [ReplayBuffer(state_dim, buffer_size, batch_size) for _ in range(n_agents)]
+
+#     for episode in range(episodes):
+#         envs = envs_provider(episode)
+#         states = [flatten_dict_values(env.reset(seed=seed)[0]) for env in envs]
+#         done_flags = [False] * n_agents
+#         total_rewards = [0.0] * n_agents
+
+#         while not all(done_flags):
+#             actions = []
+#             for i in range(n_agents):
+#                 state_tensor = torch.tensor(states[i], dtype=torch.float32).unsqueeze(0).to(device)
+#                 shared_out = shared_layers[i](state_tensor)
+#                 q_values = local_heads[i](shared_out)
+#                 if np.random.rand() < epsilon:
+#                     action = np.random.randint(q_values.shape[-1])
+#                 else:
+#                     action = torch.argmax(q_values).item()
+#                 actions.append(action)
+
+#             next_states, rewards, dones, _, _ = zip(*[envs[i].step(actions[i]) for i in range(n_agents)])
+#             next_states = [flatten_dict_values(ns) for ns in next_states]
+
+#             for i in range(n_agents):
+#                 buffers[i].store(states[i], actions[i], rewards[i], next_states[i], float(dones[i]))
+#                 total_rewards[i] += rewards[i]
+#                 states[i] = next_states[i]
+#                 done_flags[i] = dones[i]
+
+#         # Update agents independently
+#         for i in range(n_agents):
+#             if buffers[i].size < min_samples:
+#                 continue
+#             batch = buffers[i].sample(device)
+#             shared_out = shared_layers[i](batch['state'])
+#             q_values = local_heads[i](shared_out)
+#             current_q = q_values.gather(1, batch['action'].unsqueeze(1)).squeeze(1)
+
+#             with torch.no_grad():
+#                 next_shared_out = shared_layers[i](batch['next_state'])
+#                 next_q = local_heads[i](next_shared_out)
+#                 target_q = batch['reward'] + gamma * (1 - batch['done']) * next_q.max(1)[0]
+
+#             loss = torch.nn.functional.mse_loss(current_q, target_q)
+#             optimizers[i].zero_grad()
+#             loss.backward()
+#             optimizers[i].step()
+
+#         if writer:
+#             for i in range(n_agents):
+#                 writer.add_scalar(f"agent_{i}/reward_individual", total_rewards[i], episode)
+
+#         epsilon = max(epsilon_end, epsilon * epsilon_decay)
+#         for i in range(n_agents):
+#             episode_rewards[i, episode] = total_rewards[i]
+
+#     plot_rewards(episode_rewards, filename="outputs/reward_plot_individual.png")
+#     return np.mean(episode_rewards)

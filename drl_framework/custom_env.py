@@ -35,7 +35,7 @@ class CustomEnv(gym.Env):
         self.max_channel_quality = 2
         self.max_remain_epochs = max_epoch_size
         self.max_proc_times = int(np.ceil(max_epoch_size/2))
-        self.energy_weight = 0.2
+        self.energy_weight = 1
         
         # Cloud controller reference
         self.cloud_controller = cloud_controller
@@ -172,7 +172,7 @@ class CustomEnv(gym.Env):
                 self.reward = comp_unit_ahead - (self.energy_weight * power_consumed)
             else:
                 self.available_computation_units = 0
-                self.reward = -self.energy_weight
+                self.reward = -1*self.energy_weight
             self.remaining_power = np.clip(self.remaining_power - 0.5, 0, self.max_power)
         elif action == 1:   # Offload
             is_enough = self.consume_cloud_resources(comp_unit_ahead)
@@ -182,7 +182,7 @@ class CustomEnv(gym.Env):
                 power_consumed = 1
                 self.reward = (self.reward_weight * comp_unit_ahead) - (self.energy_weight * power_consumed)
             elif self.channel_quality == 0:
-                self.reward = - self.energy_weight
+                self.reward = -1*self.energy_weight
             self.remaining_power = np.clip(self.remaining_power - 1, 0, self.max_power)
         elif action == 2:   # Discard
             pass
