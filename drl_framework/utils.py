@@ -102,7 +102,10 @@ def plot_rewards(single_agent_rewards, federated_rewards, sync_interval=10):
         plt.axvline(x=i, color='gray', linestyle='--', alpha=0.3)
     
     plt.tight_layout()
-    plt.show()
+    # Save the plot with timestamp
+    plot_filename = f'training_reward_plot_{TIMESTAMP}.png'
+    plt.savefig(plot_filename)
+    
     
 def get_fixed_timestamp():
     timestamp_file = '#timestamp.txt'

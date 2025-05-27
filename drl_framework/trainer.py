@@ -18,7 +18,7 @@ class ReplayBuffer:
     def __init__(self, state_dim: int, buffer_size: int = 100000, batch_size: int = 32):
         self.state_buf = np.zeros((buffer_size, state_dim), dtype=np.float32)
         self.next_state_buf = np.zeros((buffer_size, state_dim), dtype=np.float32)
-        self.action_buf = np.zeros(buffer_size, dtype=np.int64)
+        self.action_buf = np.zeros(buffer_size, dtype=np.int32)
         self.reward_buf = np.zeros(buffer_size, dtype=np.float32)
         self.done_buf = np.zeros(buffer_size, dtype=np.float32)
         
@@ -51,11 +51,10 @@ class ReplayBuffer:
     def __len__(self):
         return self.size
 
-@measure_time
-def train_single_agent(
-    env: gym.Env,
-    agent: torch.nn.Module,
-    optimizer: torch.optim.Optimizer,
+def train_individual_agent(
+    envs: List[gym.Env],  # Changed: Now accepts list of environments like federated version
+    agents: List[torch.nn.Module],  # Changed: Now accepts list of agents
+    optimizers: List[torch.optim.Optimizer],  # Changed: Now accepts list of optimizers
     device: torch.device,
     episodes: int = 500,
     gamma: float = 0.99,
@@ -68,12 +67,13 @@ def train_single_agent(
     min_samples: int = 1000,
     hidden_dim: int = 8
 ) -> np.ndarray:
-    """Train a single agent using DQN with replay buffer
+    """Train multiple agents independently (no federated synchronization)
+    Each agent trains on its own unique environment without sharing knowledge
     
     Args:
-        env: Gymnasium environment
-        agent: Agent network (Q-network)
-        optimizer: Optimizer for Q-network
+        envs: List of Gymnasium environments (one per agent)
+        agents: List of agent networks
+        optimizers: List of optimizers (one per agent)
         device: Device to use for computation
         episodes: Number of episodes to train
         gamma: Discount factor
@@ -86,122 +86,19 @@ def train_single_agent(
         min_samples: Minimum number of samples before training starts
         
     Returns:
-        np.ndarray: Episode rewards during training
-    """
-    # SummaryWriter for TensorBoard
-    writer = SummaryWriter(output_path + "/" + "single" + "_" + TIMESTAMP)
-    
-    # Initialize target network
-    # state_dim = gym.spaces.utils.flatten_space(env.observation_space).shape[0]
-    state_dim = len(flatten_dict_values(env.observation_space.sample()))
-    # target_net = type(agent)(env.observation_space.shape[0], env.action_space.n, hidden_dim).to(device)
-    target_net = type(agent)(state_dim, env.action_space.n, hidden_dim).to(device)
-    target_net.load_state_dict(agent.state_dict())
-    
-    # Initialize replay buffer
-    memory = ReplayBuffer(state_dim, buffer_size, batch_size)
-    episode_rewards = np.zeros(episodes)
-    epsilon = epsilon_start
-
-    for episode in range(episodes):
-        state, _ = env.reset()
-        state = flatten_dict_values(state)
-        episode_reward = 0
-        done = False
-        
-        while not done:
-            state_tensor = torch.FloatTensor(state).unsqueeze(0).to(device)
-            
-            # Select action (ε-greedy)
-            if np.random.random() < epsilon:
-                action = env.action_space.sample()
-            else:
-                with torch.no_grad():
-                    action = agent(state_tensor).argmax().item()
-            
-            # Take action in environment
-            next_state, reward, done, _, _ = env.step(action)
-            done_float = 0.0 if done else 1.0
-            episode_reward += reward
-            
-            # Store transition in replay buffer
-            next_state = flatten_dict_values(next_state)
-            memory.store(state, action, reward, next_state, done_float)
-            
-            # Train if we have enough samples
-            if len(memory) > min_samples:
-                batch = memory.sample(device)
-                
-                # Compute Q(s_t, a) - current Q-values
-                current_q = agent(batch['states']).gather(1, batch['actions'].unsqueeze(1))
-                
-                # Compute Q(s_{t+1}, a) - next Q-values
-                with torch.no_grad():
-                    next_q = target_net(batch['next_states']).max(1)[0].unsqueeze(1)
-                    target_q = batch['rewards'].unsqueeze(1) + gamma * next_q * batch['dones'].unsqueeze(1)
-                
-                # Compute loss and update Q-network
-                loss = torch.nn.functional.smooth_l1_loss(current_q, target_q)
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-            
-            state = next_state
-            
-        # Store episode reward
-        episode_rewards[episode] = episode_reward
-        
-        # Update target network
-        if episode % target_update == 0:
-            target_net.load_state_dict(agent.state_dict())
-            
-        # Decay epsilon
-        epsilon = max(epsilon_end, epsilon * epsilon_decay)
-        
-        # Print progress
-        print(f"Episode {episode + 1}: Reward = {episode_reward:.1f}, Epsilon = {epsilon:.3f}")
-        
-        # Log to TensorBoard
-        writer.add_scalar('Reward', episode_reward, episode)
-        
-    return episode_rewards
-
-@measure_time
-def train_federated_agents(
-    env: gym.Env,
-    agents: List[torch.nn.Module],
-    optimizers: List[torch.optim.Optimizer],
-    device: torch.device,
-    episodes: int = 500,
-    sync_interval: int = 10,
-    gamma: float = 0.99,
-    epsilon_start: float = 1.0,
-    epsilon_end: float = 0.01,
-    epsilon_decay: float = 0.995,
-    target_update: int = 10,
-    batch_size: int = 32,
-    buffer_size: int = 100000,
-    min_samples: int = 1000,
-    hidden_dim: int = 8
-) -> np.ndarray:
-    """Train multiple agents using federated DQN with replay buffer
-    
-    Args:
-        Similar to train_single_agent, but with multiple agents
-        
-    Returns:
         np.ndarray: Rewards for each agent (shape: [n_agents, episodes])
     """
+    # Validate input
+    assert len(envs) == len(agents) == len(optimizers), \
+        "Number of environments, agents, and optimizers must match"
+    
     # SummaryWriter for TensorBoard
-    writer = SummaryWriter(output_path + "/" + "federated" + "_" + TIMESTAMP)
+    writer = SummaryWriter(output_path + "/" + "independent" + "_" + TIMESTAMP)
     
     # Initialize target networks for each agent
-    # state_dim = gym.spaces.utils.flatten_space(env.observation_space).shape[0]
-    state_dim = len(flatten_dict_values(env.observation_space.sample()))
-    # target_nets = [type(agent)(env.observation_space.shape[0], env.action_space.n, hidden_dim).to(device)
-    #               for agent in agents]
+    state_dim = len(flatten_dict_values(envs[0].observation_space.sample()))
     target_nets = [type(agent)(state_dim, env.action_space.n, hidden_dim).to(device)
-                  for agent in agents]
+                  for agent, env in zip(agents, envs)]
     for target_net, agent in zip(target_nets, agents):
         target_net.load_state_dict(agent.state_dict())
     
@@ -213,7 +110,12 @@ def train_federated_agents(
     epsilon = epsilon_start
 
     for episode in range(episodes):
-        for agent_idx, (agent, optimizer, target_net, memory) in enumerate(zip(agents, optimizers, target_nets, memories)):
+        episode_agent_rewards = []
+        
+        # Train each agent independently on its own environment
+        for agent_idx, (env, agent, optimizer, target_net, memory) in enumerate(
+            zip(envs, agents, optimizers, target_nets, memories)):
+            
             state, _ = env.reset()
             state = flatten_dict_values(state)
             episode_reward = 0
@@ -260,24 +162,179 @@ def train_federated_agents(
             
             # Store episode reward for this agent
             episode_rewards[agent_idx, episode] = episode_reward
+            episode_agent_rewards.append(episode_reward)
             
             # Update target network
             if episode % target_update == 0:
                 target_net.load_state_dict(agent.state_dict())
         
-        # Synchronize agents
-        if episode % sync_interval == 0:
-            average_shared_mlp(agents)
+        # NO SYNCHRONIZATION - This is the key difference from federated training
+        # Each agent learns independently without sharing knowledge
         
         # Decay epsilon
         epsilon = max(epsilon_end, epsilon * epsilon_decay)
         
-        # Print progress
-        avg_reward = episode_rewards[:, episode].mean()
-        print(f"Episode {episode + 1}: Federated Sync {episode % sync_interval == 0}, "
-              f"Average Reward = {avg_reward:.1f}, Epsilon = {epsilon:.3f}")
+        # Print progress with detailed agent information
+        avg_reward = np.mean(episode_agent_rewards)
+        max_reward = np.max(episode_agent_rewards)
+        min_reward = np.min(episode_agent_rewards)
         
-        # Log to TensorBoard
-        writer.add_scalar('Reward', episode_reward, episode)
+        print(f"Episode {episode + 1}: Independent Training - "
+              f"Avg Reward = {avg_reward:.1f} "
+              f"(Min: {min_reward:.1f}, Max: {max_reward:.1f}), "
+              f"Epsilon = {epsilon:.3f}")
+        
+        # Log individual agent rewards to TensorBoard
+        for agent_idx, reward in enumerate(episode_agent_rewards):
+            writer.add_scalar(f'Agent_{agent_idx+1}_Reward', reward, episode)
+        writer.add_scalar('Average_Reward', avg_reward, episode)
+        writer.add_scalar('Max_Reward', max_reward, episode)
+        writer.add_scalar('Min_Reward', min_reward, episode)
+    
+    return episode_rewards
+
+def train_federated_agents(
+    envs: List[gym.Env],  # Changed: Now accepts list of environments
+    agents: List[torch.nn.Module],
+    optimizers: List[torch.optim.Optimizer],
+    device: torch.device,
+    episodes: int = 500,
+    sync_interval: int = 10,
+    gamma: float = 0.99,
+    epsilon_start: float = 1.0,
+    epsilon_end: float = 0.01,
+    epsilon_decay: float = 0.995,
+    target_update: int = 10,
+    batch_size: int = 32,
+    buffer_size: int = 100000,
+    min_samples: int = 1000,
+    hidden_dim: int = 8
+) -> np.ndarray:
+    """Train multiple agents using federated DQN with replay buffer
+    Each agent trains on its own unique environment
+    
+    Args:
+        envs: List of Gymnasium environments (one per agent)
+        agents: List of agent networks
+        optimizers: List of optimizers (one per agent)
+        device: Device to use for computation
+        episodes: Number of episodes to train
+        sync_interval: Number of episodes between federated synchronization
+        gamma: Discount factor
+        epsilon_start: Starting value of epsilon for ε-greedy policy
+        epsilon_end: Minimum value of epsilon
+        epsilon_decay: Decay rate of epsilon
+        target_update: Number of episodes between target network updates
+        batch_size: Size of mini-batch for training
+        buffer_size: Size of replay buffer
+        min_samples: Minimum number of samples before training starts
+        
+    Returns:
+        np.ndarray: Rewards for each agent (shape: [n_agents, episodes])
+    """
+    # Validate input
+    assert len(envs) == len(agents) == len(optimizers), \
+        "Number of environments, agents, and optimizers must match"
+    
+    # SummaryWriter for TensorBoard
+    writer = SummaryWriter(output_path + "/" + "federated" + "_" + TIMESTAMP)
+    
+    # Initialize target networks for each agent
+    state_dim = len(flatten_dict_values(envs[0].observation_space.sample()))
+    target_nets = [type(agent)(state_dim, env.action_space.n, hidden_dim).to(device)
+                  for agent, env in zip(agents, envs)]
+    for target_net, agent in zip(target_nets, agents):
+        target_net.load_state_dict(agent.state_dict())
+    
+    # Initialize replay buffers for each agent
+    memories = [ReplayBuffer(state_dim, buffer_size, batch_size) 
+               for _ in range(len(agents))]
+    
+    episode_rewards = np.zeros((len(agents), episodes))
+    epsilon = epsilon_start
+
+    for episode in range(episodes):
+        episode_agent_rewards = []
+        
+        # Train each agent on its own environment
+        for agent_idx, (env, agent, optimizer, target_net, memory) in enumerate(
+            zip(envs, agents, optimizers, target_nets, memories)):
+            
+            state, _ = env.reset()
+            state = flatten_dict_values(state)
+            episode_reward = 0
+            done = False
+            
+            while not done:
+                state_tensor = torch.FloatTensor(state).unsqueeze(0).to(device)
+                
+                # Select action (ε-greedy)
+                if np.random.random() < epsilon:
+                    action = env.action_space.sample()
+                else:
+                    with torch.no_grad():
+                        action = agent(state_tensor).argmax().item()
+                
+                # Take action in environment
+                next_state, reward, done, _, _ = env.step(action)
+                done_float = 0.0 if done else 1.0
+                episode_reward += reward
+                
+                # Store transition in replay buffer
+                next_state = flatten_dict_values(next_state)
+                memory.store(state, action, reward, next_state, done_float)
+                
+                # Train if we have enough samples
+                if len(memory) > min_samples:
+                    batch = memory.sample(device)
+                    
+                    # Compute Q(s_t, a) - current Q-values
+                    current_q = agent(batch['states']).gather(1, batch['actions'].unsqueeze(1))
+                    
+                    # Compute Q(s_{t+1}, a) - next Q-values
+                    with torch.no_grad():
+                        next_q = target_net(batch['next_states']).max(1)[0].unsqueeze(1)
+                        target_q = batch['rewards'].unsqueeze(1) + gamma * next_q * batch['dones'].unsqueeze(1)
+                    
+                    # Compute loss and update Q-network
+                    loss = torch.nn.functional.smooth_l1_loss(current_q, target_q)
+                    optimizer.zero_grad()
+                    loss.backward()
+                    optimizer.step()
+                
+                state = next_state
+            
+            # Store episode reward for this agent
+            episode_rewards[agent_idx, episode] = episode_reward
+            episode_agent_rewards.append(episode_reward)
+            
+            # Update target network
+            if episode % target_update == 0:
+                target_net.load_state_dict(agent.state_dict())
+        
+        # Synchronize agents (federated learning)
+        if episode % sync_interval == 0:
+            average_shared_mlp(agents)
+            print(f"Episode {episode + 1}: Federated Synchronization Performed")
+        
+        # Decay epsilon
+        epsilon = max(epsilon_end, epsilon * epsilon_decay)
+        
+        # Print progress with detailed agent information
+        avg_reward = np.mean(episode_agent_rewards)
+        max_reward = np.max(episode_agent_rewards)
+        min_reward = np.min(episode_agent_rewards)
+        
+        print(f"Episode {episode + 1}: "
+              f"Avg Reward = {avg_reward:.1f} "
+              f"(Min: {min_reward:.1f}, Max: {max_reward:.1f}), "
+              f"Epsilon = {epsilon:.3f}")
+        
+        # Log individual agent rewards to TensorBoard
+        for agent_idx, reward in enumerate(episode_agent_rewards):
+            writer.add_scalar(f'Agent_{agent_idx+1}_Reward', reward, episode)
+        writer.add_scalar('Average_Reward', avg_reward, episode)
+        writer.add_scalar('Max_Reward', max_reward, episode)
+        writer.add_scalar('Min_Reward', min_reward, episode)
     
     return episode_rewards
