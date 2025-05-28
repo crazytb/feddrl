@@ -2,7 +2,7 @@ import gymnasium as gym
 import torch
 import json
 from drl_framework.networks import LocalNetwork
-from drl_framework.trainer import train_single_agent, train_federated_agents
+from drl_framework.trainer import train_individual_agent, train_federated_agents
 from drl_framework.utils import *
 from drl_framework.custom_env import *
 from drl_framework.params import device
@@ -46,8 +46,8 @@ def main():
         CustomEnv(
             max_comp_units=np.random.randint(1, 101),  # 1 to 100
             max_epoch_size=10,
-            max_queue_size=5,
-            reward_weights=0.1,
+            max_queue_size=np.random.randint(1, 11),  # 1 to 10
+            reward_weights=1,
             agent_velocities=np.random.randint(10, 101)  # 10 to 100
         ) for _ in range(num_agents)
     ]
@@ -70,7 +70,7 @@ def main():
     # Independent Agent Training (each agent trains independently without federated learning)
     independent_agents = [LocalNetwork(state_dim, action_dim, hidden_dim).to(device) for _ in range(num_agents)]
     independent_optimizers = [torch.optim.Adam(agent.parameters(), lr=learning_rate) for agent in independent_agents]
-    independent_agent_rewards = train_single_agent(
+    independent_agent_rewards = train_individual_agent(
         envs=envs,  # Use same diverse environments
         agents=independent_agents,
         optimizers=independent_optimizers,
