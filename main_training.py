@@ -44,11 +44,12 @@ def main():
     # Create diverse environments for each agent
     envs = [
         CustomEnv(
-            max_comp_units=np.random.randint(1, 101),  # 1 to 100
-            max_epoch_size=10,
-            max_queue_size=10,
-            reward_weights=1,
-            agent_velocities=np.random.randint(10, 101)  # 10 to 100
+            **ENV_PARAMS,  # Use predefined environment parameters
+            # max_comp_units=np.random.randint(1, 101),  # 1 to 100
+            # max_epoch_size=10,
+            # max_queue_size=10,
+            # reward_weights=1,
+            # agent_velocities=np.random.randint(10, 101)  # 10 to 100
         ) for _ in range(num_agents)
     ]
     

@@ -1,0 +1,75 @@
+Training Configuration - 20250529_142043
+Number of Agents: 10
+Episodes: 500
+Sync Interval: 100
+
+Agent 1 Environment:
+  - Max Computation Units: 51
+  - Agent Velocities: 25
+  - Max Epoch Size: 10
+  - Max Queue Size: 20
+  - Reward Weights: 0.1
+
+Agent 2 Environment:
+  - Max Computation Units: 51
+  - Agent Velocities: 25
+  - Max Epoch Size: 10
+  - Max Queue Size: 20
+  - Reward Weights: 0.1
+
+Agent 3 Environment:
+  - Max Computation Units: 51
+  - Agent Velocities: 25
+  - Max Epoch Size: 10
+  - Max Queue Size: 20
+  - Reward Weights: 0.1
+
+Agent 4 Environment:
+  - Max Computation Units: 51
+  - Agent Velocities: 25
+  - Max Epoch Size: 10
+  - Max Queue Size: 20
+  - Reward Weights: 0.1
+
+Agent 5 Environment:
+  - Max Computation Units: 51
+  - Agent Velocities: 25
+  - Max Epoch Size: 10
+  - Max Queue Size: 20
+  - Reward Weights: 0.1
+
+Agent 6 Environment:
+  - Max Computation Units: 51
+  - Agent Velocities: 25
+  - Max Epoch Size: 10
+  - Max Queue Size: 20
+  - Reward Weights: 0.1
+
+Agent 7 Environment:
+  - Max Computation Units: 51
+  - Agent Velocities: 25
+  - Max Epoch Size: 10
+  - Max Queue Size: 20
+  - Reward Weights: 0.1
+
+Agent 8 Environment:
+  - Max Computation Units: 51
+  - Agent Velocities: 25
+  - Max Epoch Size: 10
+  - Max Queue Size: 20
+  - Reward Weights: 0.1
+
+Agent 9 Environment:
+  - Max Computation Units: 51
+  - Agent Velocities: 25
+  - Max Epoch Size: 10
+  - Max Queue Size: 20
+  - Reward Weights: 0.1
+
+Agent 10 Environment:
+  - Max Computation Units: 51
+  - Agent Velocities: 25
+  - Max Epoch Size: 10
+  - Max Queue Size: 20
+  - Reward Weights: 0.1
+

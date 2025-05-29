@@ -1,6 +1,7 @@
 import os
 from datetime import datetime
 import torch
+import numpy as np
 
 # Device configuration
 if torch.cuda.is_available():
@@ -12,11 +13,20 @@ else:
 # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Env parameters
-MAX_COMP_UNITS = 100
-MAX_TERMINALS = 10
-MAX_EPOCH_SIZE = 200 #
+# MAX_COMP_UNITS = 100
+# MAX_TERMINALS = 10
+MAX_EPOCH_SIZE = 10 #
 MAX_QUEUE_SIZE = 20
 REWARD_WEIGHTS = 0.1
+
+# Env params
+ENV_PARAMS = {
+    'max_comp_units': np.random.randint(1, 101),  # Max computation units
+    'max_epoch_size': MAX_EPOCH_SIZE,  # Max epoch size
+    'max_queue_size': MAX_QUEUE_SIZE,  # Max queue size
+    'reward_weights': REWARD_WEIGHTS,  # Reward weights
+    'agent_velocities': np.random.randint(10, 101)  # Agent velocities
+    }
 
 # DQN parameters
 # BATCH_SIZE is the number of transitions sampled from the replay buffer

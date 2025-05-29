@@ -8,11 +8,11 @@ import matplotlib.pyplot as plt
 from drl_framework.networks import LocalNetwork
 from drl_framework.custom_env import CustomEnv
 from drl_framework.utils import *
-from drl_framework.params import device
+from drl_framework.params import *
 
 def load_model(model_path, device):
     """Load a trained model from file"""
-    checkpoint = torch.load(model_path, map_location=device)
+    checkpoint = torch.load(model_path, map_location=device, weights_only=False)
     
     # Extract model architecture
     arch = checkpoint['model_architecture']
@@ -129,9 +129,9 @@ def create_test_environments(num_agents, seed=None):
     envs = [
         CustomEnv(
             max_comp_units=np.random.randint(1, 101),  # 1 to 100
-            max_epoch_size=10,
-            max_queue_size=5,
-            reward_weights=0.1,
+            max_epoch_size=MAX_EPOCH_SIZE,
+            max_queue_size=MAX_QUEUE_SIZE,
+            reward_weights=REWARD_WEIGHTS,
             agent_velocities=np.random.randint(10, 101)  # 10 to 100
         ) for _ in range(num_agents)
     ]
@@ -441,14 +441,9 @@ def main():
     print(f"Using Independent models from: {independent_dir}")
     print(f"Using Federated models from: {federated_dir}")
     
-    # Extract timestamp and number of agents
-    try:
-        # timestamp = independent_dir.split('_')[-1]
-        num_agents = int(independent_dir.split('_')[1].replace('agents', ''))
-    except:
-        num_agents = 3  # Default fallback
-        # timestamp = "unknown"
     timestamp = TIMESTAMP
+    num_agents = NUM_AGENTS
+    
     print(f"Number of agents: {num_agents}")
     print(f"Timestamp: {timestamp}")
     
