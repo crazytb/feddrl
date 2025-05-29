@@ -39,14 +39,14 @@ def main():
     seed_torch(seed)
     
     # Environment and hyperparameters
-    num_agents = 3
+    num_agents = NUM_AGENTS
     
     # Create diverse environments for each agent
     envs = [
         CustomEnv(
             max_comp_units=np.random.randint(1, 101),  # 1 to 100
             max_epoch_size=10,
-            max_queue_size=np.random.randint(1, 11),  # 1 to 10
+            max_queue_size=10,
             reward_weights=1,
             agent_velocities=np.random.randint(10, 101)  # 10 to 100
         ) for _ in range(num_agents)

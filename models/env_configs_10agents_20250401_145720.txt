@@ -1,75 +1,75 @@
 Training Configuration - 20250401_145720
 Number of Agents: 10
-Episodes: 200
+Episodes: 500
 Sync Interval: 100
 
 Agent 1 Environment:
   - Max Computation Units: 52
   - Agent Velocities: 24
   - Max Epoch Size: 10
-  - Max Queue Size: 5
-  - Reward Weights: 0.1
+  - Max Queue Size: 10
+  - Reward Weights: 1.0
 
 Agent 2 Environment:
   - Max Computation Units: 72
   - Agent Velocities: 70
   - Max Epoch Size: 10
-  - Max Queue Size: 5
-  - Reward Weights: 0.1
+  - Max Queue Size: 10
+  - Reward Weights: 1.0
 
 Agent 3 Environment:
   - Max Computation Units: 21
   - Agent Velocities: 92
   - Max Epoch Size: 10
-  - Max Queue Size: 5
-  - Reward Weights: 0.1
+  - Max Queue Size: 10
+  - Reward Weights: 1.0
 
 Agent 4 Environment:
   - Max Computation Units: 87
   - Agent Velocities: 84
   - Max Epoch Size: 10
-  - Max Queue Size: 5
-  - Reward Weights: 0.1
+  - Max Queue Size: 10
+  - Reward Weights: 1.0
 
 Agent 5 Environment:
   - Max Computation Units: 75
   - Agent Velocities: 97
   - Max Epoch Size: 10
-  - Max Queue Size: 5
-  - Reward Weights: 0.1
+  - Max Queue Size: 10
+  - Reward Weights: 1.0
 
 Agent 6 Environment:
   - Max Computation Units: 100
   - Agent Velocities: 33
   - Max Epoch Size: 10
-  - Max Queue Size: 5
-  - Reward Weights: 0.1
+  - Max Queue Size: 10
+  - Reward Weights: 1.0
 
 Agent 7 Environment:
   - Max Computation Units: 3
   - Agent Velocities: 31
   - Max Epoch Size: 10
-  - Max Queue Size: 5
-  - Reward Weights: 0.1
+  - Max Queue Size: 10
+  - Reward Weights: 1.0
 
 Agent 8 Environment:
   - Max Computation Units: 53
   - Agent Velocities: 11
   - Max Epoch Size: 10
-  - Max Queue Size: 5
-  - Reward Weights: 0.1
+  - Max Queue Size: 10
+  - Reward Weights: 1.0
 
 Agent 9 Environment:
   - Max Computation Units: 88
   - Agent Velocities: 39
   - Max Epoch Size: 10
-  - Max Queue Size: 5
-  - Reward Weights: 0.1
+  - Max Queue Size: 10
+  - Reward Weights: 1.0
 
 Agent 10 Environment:
   - Max Computation Units: 38
   - Agent Velocities: 11
   - Max Epoch Size: 10
-  - Max Queue Size: 5
-  - Reward Weights: 0.1
+  - Max Queue Size: 10
+  - Reward Weights: 1.0
 

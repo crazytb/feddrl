@@ -133,3 +133,4 @@ def save_model(model, path='default.pth'):
     print(f"Model saved at {save_path}")
     
 TIMESTAMP = get_fixed_timestamp()
+NUM_AGENTS = 10  # Default number of agents, can be overridden
