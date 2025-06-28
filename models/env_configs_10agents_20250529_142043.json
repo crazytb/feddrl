@@ -1,6 +1,6 @@
 {
   "num_agents": 10,
-  "episodes": 500,
+  "episodes": 1000,
   "sync_interval": 100,
   "envs": [
     {

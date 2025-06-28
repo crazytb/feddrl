@@ -5,16 +5,23 @@ import numpy as np
 from .params import device
 
 class SharedMLP(nn.Module):
-    """Shared MLP layers for federated learning"""
-    def __init__(self, input_dim: int, hidden_dim: int):
+    def __init__(self, input_dim: int, hidden_dim: int, dropout_prob: float = 0.2):
         super().__init__()
-        self.fc1 = nn.Linear(input_dim, hidden_dim).to(device)
-        self.fc2 = nn.Linear(hidden_dim, hidden_dim).to(device)
+        self.fc1 = nn.Linear(input_dim, hidden_dim)
+        self.dropout1 = nn.Dropout(dropout_prob)
+        self.fc2 = nn.Linear(hidden_dim, hidden_dim)
+        self.dropout2 = nn.Dropout(dropout_prob)
+        self.fc3 = nn.Linear(hidden_dim, hidden_dim)
+        self.dropout3 = nn.Dropout(dropout_prob)
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = x.to(device)
         x = F.relu(self.fc1(x))
+        x = self.dropout1(x)
         x = F.relu(self.fc2(x))
+        x = self.dropout2(x)
+        x = F.relu(self.fc3(x))
+        x = self.dropout3(x)
         return x
 
     def get_parameters(self):

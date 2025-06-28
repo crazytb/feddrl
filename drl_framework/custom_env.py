@@ -14,7 +14,7 @@ class CustomEnv(gym.Env):
                  max_comp_units,
                  max_epoch_size,
                  max_queue_size,
-                 reward_weights=0.1,
+                 reward_weights=1,
                  agent_velocities=None
                  ):
         super().__init__()
@@ -148,7 +148,7 @@ class CustomEnv(gym.Env):
                 if self.channel_quality == 1:
                     self.reward = (self.reward_weight * reward)
                 elif self.channel_quality == 0:
-                    pass
+                    self.reward = 0
         else:
             raise ValueError("Invalid action")
         self.queue_comp_units = self.rng.integers(1, self.max_comp_units + 1)

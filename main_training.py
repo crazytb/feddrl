@@ -63,8 +63,8 @@ def main():
     # Use the first environment to determine state dimensions (assuming same structure)
     state_dim = len(flatten_dict_values(envs[0].observation_space.sample()))
     action_dim = envs[0].action_space.n
-    hidden_dim = 8
-    episodes = 500
+    hidden_dim = 64
+    episodes = 1000
     learning_rate = 0.001
     sync_interval = 100
 
@@ -76,7 +76,8 @@ def main():
         agents=independent_agents,
         optimizers=independent_optimizers,
         device=device,
-        episodes=episodes
+        episodes=episodes,
+        hidden_dim=hidden_dim,
     )
 
     # Federated Agents Training with diverse environments
@@ -88,6 +89,7 @@ def main():
         optimizers=federated_optimizers,
         device=device,
         episodes=episodes,
+        hidden_dim=hidden_dim,
         sync_interval=sync_interval
     )
 

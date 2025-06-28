@@ -1,6 +1,6 @@
 Training Configuration - 20250529_142043
 Number of Agents: 10
-Episodes: 500
+Episodes: 1000
 Sync Interval: 100
 
 Agent 1 Environment:
