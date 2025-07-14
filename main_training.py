@@ -41,15 +41,16 @@ def main():
     # Environment and hyperparameters
     num_agents = NUM_AGENTS
     
-    # Create diverse environments for each agent
+    # Create diverse environments for each agent with fixed state dimensions
+    # Use fixed max_queue_size and max_epoch_size to ensure consistent state dimensions
+    # but vary other parameters for diversity
     envs = [
         CustomEnv(
-            **ENV_PARAMS,  # Use predefined environment parameters
-            # max_comp_units=np.random.randint(1, 101),  # 1 to 100
-            # max_epoch_size=10,
-            # max_queue_size=10,
-            # reward_weights=1,
-            # agent_velocities=np.random.randint(10, 101)  # 10 to 100
+            max_comp_units=np.random.randint(20, 201),  # 20 to 200 (diverse computation units)
+            max_epoch_size=10,  # Fixed for consistent state dimensions
+            max_queue_size=20,  # Fixed for consistent state dimensions
+            reward_weights=REWARD_WEIGHTS,
+            agent_velocities=np.random.randint(10, 101)  # 10 to 100 (diverse velocities)
         ) for _ in range(num_agents)
     ]
     
@@ -66,7 +67,7 @@ def main():
     hidden_dim = 64
     episodes = 1000
     learning_rate = 0.001
-    sync_interval = 100
+    sync_interval = 50  # Less frequent synchronization to allow more independent learning
 
     # Independent Agent Training (each agent trains independently without federated learning)
     independent_agents = [LocalNetwork(state_dim, action_dim, hidden_dim).to(device) for _ in range(num_agents)]

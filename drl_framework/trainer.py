@@ -97,7 +97,7 @@ def train_individual_agent(
     
     # Initialize target networks for each agent
     state_dim = len(flatten_dict_values(envs[0].observation_space.sample()))
-    target_nets = [type(agent)(state_dim, env.action_space.n, hidden_dim).to(device)
+    target_nets = [type(agent)(state_dim, int(env.action_space.n), hidden_dim).to(device)
                   for agent, env in zip(agents, envs)]
     for target_net, agent in zip(target_nets, agents):
         target_net.load_state_dict(agent.state_dict())
@@ -134,11 +134,11 @@ def train_individual_agent(
                 # Take action in environment
                 next_state, reward, done, _, _ = env.step(action)
                 done_float = 0.0 if done else 1.0
-                episode_reward += reward
+                episode_reward += float(reward)
                 
                 # Store transition in replay buffer
                 next_state = flatten_dict_values(next_state)
-                memory.store(state, action, reward, next_state, done_float)
+                memory.store(state, action, float(reward), next_state, done_float)
                 
                 # Train if we have enough samples
                 if len(memory) > min_samples:
@@ -241,7 +241,7 @@ def train_federated_agents(
     
     # Initialize target networks for each agent
     state_dim = len(flatten_dict_values(envs[0].observation_space.sample()))
-    target_nets = [type(agent)(state_dim, env.action_space.n, hidden_dim).to(device)
+    target_nets = [type(agent)(state_dim, int(env.action_space.n), hidden_dim).to(device)
                   for agent, env in zip(agents, envs)]
     for target_net, agent in zip(target_nets, agents):
         target_net.load_state_dict(agent.state_dict())
@@ -278,11 +278,11 @@ def train_federated_agents(
                 # Take action in environment
                 next_state, reward, done, _, _ = env.step(action)
                 done_float = 0.0 if done else 1.0
-                episode_reward += reward
+                episode_reward += float(reward)
                 
                 # Store transition in replay buffer
                 next_state = flatten_dict_values(next_state)
-                memory.store(state, action, reward, next_state, done_float)
+                memory.store(state, action, float(reward), next_state, done_float)
                 
                 # Train if we have enough samples
                 if len(memory) > min_samples:
@@ -312,10 +312,12 @@ def train_federated_agents(
             if episode % target_update == 0:
                 target_net.load_state_dict(agent.state_dict())
         
-        # Synchronize agents (federated learning)
-        if episode % sync_interval == 0:
+        # Synchronize agents (federated learning) - only after initial learning period
+        if episode % sync_interval == 0 and episode >= 200:  # Start federated averaging after 200 episodes
             average_shared_mlp(agents)
             print(f"Episode {episode + 1}: Federated Synchronization Performed")
+        elif episode % sync_interval == 0 and episode < 200:
+            print(f"Episode {episode + 1}: Skipping federated sync (too early in training)")
         
         # Decay epsilon
         epsilon = max(epsilon_end, epsilon * epsilon_decay)

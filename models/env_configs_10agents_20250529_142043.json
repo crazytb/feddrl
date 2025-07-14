@@ -1,87 +1,87 @@
 {
   "num_agents": 10,
   "episodes": 1000,
-  "sync_interval": 100,
+  "sync_interval": 20,
   "envs": [
     {
       "agent_id": 1,
-      "max_comp_units": 100,
+      "max_comp_units": 122,
       "max_epoch_size": 10,
       "max_queue_size": 20,
-      "reward_weights": 0.1,
-      "agent_velocities": 50
+      "reward_weights": 1.0,
+      "agent_velocities": 61
     },
     {
       "agent_id": 2,
-      "max_comp_units": 100,
+      "max_comp_units": 112,
       "max_epoch_size": 10,
       "max_queue_size": 20,
-      "reward_weights": 0.1,
-      "agent_velocities": 50
+      "reward_weights": 1.0,
+      "agent_velocities": 24
     },
     {
       "agent_id": 3,
-      "max_comp_units": 100,
+      "max_comp_units": 126,
       "max_epoch_size": 10,
       "max_queue_size": 20,
-      "reward_weights": 0.1,
-      "agent_velocities": 50
+      "reward_weights": 1.0,
+      "agent_velocities": 81
     },
     {
       "agent_id": 4,
-      "max_comp_units": 100,
+      "max_comp_units": 40,
       "max_epoch_size": 10,
       "max_queue_size": 20,
-      "reward_weights": 0.1,
-      "agent_velocities": 50
+      "reward_weights": 1.0,
+      "agent_velocities": 92
     },
     {
       "agent_id": 5,
-      "max_comp_units": 100,
+      "max_comp_units": 94,
       "max_epoch_size": 10,
       "max_queue_size": 20,
-      "reward_weights": 0.1,
-      "agent_velocities": 50
+      "reward_weights": 1.0,
+      "agent_velocities": 84
     },
     {
       "agent_id": 6,
-      "max_comp_units": 100,
+      "max_comp_units": 107,
       "max_epoch_size": 10,
       "max_queue_size": 20,
-      "reward_weights": 0.1,
-      "agent_velocities": 50
+      "reward_weights": 1.0,
+      "agent_velocities": 33
     },
     {
       "agent_id": 7,
-      "max_comp_units": 100,
+      "max_comp_units": 150,
       "max_epoch_size": 10,
       "max_queue_size": 20,
-      "reward_weights": 0.1,
-      "agent_velocities": 50
+      "reward_weights": 1.0,
+      "agent_velocities": 31
     },
     {
       "agent_id": 8,
-      "max_comp_units": 100,
+      "max_comp_units": 72,
       "max_epoch_size": 10,
       "max_queue_size": 20,
-      "reward_weights": 0.1,
-      "agent_velocities": 50
+      "reward_weights": 1.0,
+      "agent_velocities": 11
     },
     {
       "agent_id": 9,
-      "max_comp_units": 100,
+      "max_comp_units": 107,
       "max_epoch_size": 10,
       "max_queue_size": 20,
-      "reward_weights": 0.1,
-      "agent_velocities": 50
+      "reward_weights": 1.0,
+      "agent_velocities": 39
     },
     {
       "agent_id": 10,
-      "max_comp_units": 100,
+      "max_comp_units": 57,
       "max_epoch_size": 10,
       "max_queue_size": 20,
-      "reward_weights": 0.1,
-      "agent_velocities": 50
+      "reward_weights": 1.0,
+      "agent_velocities": 11
     }
   ]
 }

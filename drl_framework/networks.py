@@ -55,7 +55,7 @@ class LocalNetwork(nn.Module):
         q_values = self.forward(state)
         return q_values[:, action]
     
-    def get_max_q_value(self, state: torch.Tensor) -> torch.Tensor:
+    def get_max_q_value(self, state: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """Get maximum Q-value and corresponding action"""
         with torch.no_grad():
             q_values = self.forward(state)
@@ -65,25 +65,27 @@ class LocalNetwork(nn.Module):
     def select_action(self, state: torch.Tensor, epsilon: float) -> int:
         """Select action using ε-greedy policy"""
         if np.random.random() < epsilon:
-            return np.random.randint(self.q_head.out_features)
+            return int(np.random.randint(self.q_head.out_features))
         else:
             with torch.no_grad():
                 q_values = self.forward(state)
-                return q_values.argmax().item()
+                return int(q_values.argmax().item())
 
 def average_shared_mlp(agent_networks):
-    """Average shared MLP parameters across agents"""
+    """Average only shared MLP parameters across agents (more conservative approach)"""
     with torch.no_grad():
         num_agents = len(agent_networks)
-        averaged_params = [torch.zeros_like(p, device=device) 
-                         for p in agent_networks[0].mlp.get_parameters()]
         
-        # Sum up parameters
-        for agent in agent_networks:
-            params = agent.mlp.get_parameters()
-            for i in range(len(averaged_params)):
-                averaged_params[i] += params[i] / num_agents
+        # Only average shared MLP parameters (not Q-head parameters)
+        averaged_mlp_params = [torch.zeros_like(p, device=device) 
+                             for p in agent_networks[0].mlp.get_parameters()]
         
-        # Set averaged parameters
+        # Sum up MLP parameters
         for agent in agent_networks:
-            agent.mlp.set_parameters(averaged_params)
+            mlp_params = agent.mlp.get_parameters()
+            for i in range(len(averaged_mlp_params)):
+                averaged_mlp_params[i] += mlp_params[i] / num_agents
+        
+        # Set averaged MLP parameters
+        for agent in agent_networks:
+            agent.mlp.set_parameters(averaged_mlp_params)
